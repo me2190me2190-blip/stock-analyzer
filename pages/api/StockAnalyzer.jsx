@@ -130,7 +130,8 @@ export default function StockAnalyzer() {
 
         {r&&(()=>{
           const pt=r.priceTargets||{};
-          const cur=parseFloat(pt.currentPrice)||0,sl=parseFloat(pt.stopLoss)||0,bL=parseFloat(pt.buyZoneLow)||0,bH=parseFloat(pt.buyZoneHigh)||0,tgt=parseFloat(pt.targetPrice)||0;
+          const cur=parseFloat(info.currentPrice)||0; // 실제 데이터 사용
+          const sl=parseFloat(pt.stopLoss)||0,bL=parseFloat(pt.buyZoneLow)||0,bH=parseFloat(pt.buyZoneHigh)||0,tgt=parseFloat(pt.targetPrice)||0;
           const allP=[sl,bL,cur,tgt].filter(Boolean),minP=Math.min(...allP)*.97,maxP=Math.max(...allP)*1.03;
           const pct=v=>`${Math.max(0,Math.min(100,((v-minP)/(maxP-minP))*100)).toFixed(1)}%`;
           return(<>

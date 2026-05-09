@@ -20,8 +20,8 @@ const KR_STOCKS = {
 
 let _session = null, _sessionTime = 0;
 
-async function getYFSession() {
-  if (_session && Date.now() - _sessionTime < 50*60*1000) return _session;
+async function getYFSession(force = false) {
+  if (!force && _session && Date.now() - _sessionTime < 30*60*1000) return _session;
   const r1 = await fetch("https://finance.yahoo.com/", { headers:{"User-Agent":UA,"Accept":"text/html"}, redirect:"follow" });
   const ch = typeof r1.headers.getSetCookie==="function" ? r1.headers.getSetCookie() : [r1.headers.get("set-cookie")].filter(Boolean);
   const cookies = ch.map(c=>c.split(";")[0]).join("; ");
@@ -32,7 +32,46 @@ async function getYFSession() {
   return _session;
 }
 
-async function resolveTicker(query) {
+async function fetchYF(ticker, cookies, crumb) {
+  const modules = "summaryDetail,financialData,defaultKeyStatistics,incomeStatementHistory,price";
+  const url = `${YF_SUMMARY}/${ticker}?modules=${modules}&crumb=${encodeURIComponent(crumb)}`;
+  const r = await fetch(url, { headers:{"User-Agent":UA,"Cookie":cookies} });
+  return r.json();
+}
+
+async function fetchWithFallback(ticker, cookies, crumb) {
+  const tryTicker = async (t, sess) => {
+    const json = await fetchYF(t, sess.cookies, sess.crumb);
+    // internal-error는 세션 만료일 수 있음 → 재시도
+    if (json.quoteSummary?.error?.code === "internal-error") return null;
+    if (json.quoteSummary?.error || !json.quoteSummary?.result?.[0]) return "not_found";
+    return { ticker: t, data: json.quoteSummary.result[0] };
+  };
+
+  let sess = { cookies, crumb };
+  let result = await tryTicker(ticker, sess);
+
+  // internal-error → 세션 갱신 후 재시도
+  if (result === null) {
+    sess = await getYFSession(true); // 강제 갱신
+    result = await tryTicker(ticker, sess);
+  }
+
+  // KOSPI 실패 → KOSDAQ 시도
+  if ((!result || result === "not_found") && ticker.endsWith(".KS")) {
+    const kqTicker = ticker.replace(".KS", ".KQ");
+    result = await tryTicker(kqTicker, sess);
+    if (result === null) {
+      sess = await getYFSession(true);
+      result = await tryTicker(kqTicker, sess);
+    }
+  }
+
+  if (!result || result === "not_found") {
+    throw new Error(`${ticker} 데이터를 가져올 수 없습니다. 코드를 확인해주세요.`);
+  }
+  return result;
+}
   const q = query.trim();
   if (/^\d{6}$/.test(q)) {
     // 6자리 코드: KS 먼저 시도, 실패하면 KQ
@@ -84,7 +123,11 @@ export default async function handler(req, res) {
     const pr=d.price||{}, sd=d.summaryDetail||{}, fd=d.financialData||{}, ks=d.defaultKeyStatistics||{};
     const is0=d.incomeStatementHistory?.incomeStatementHistory?.[0]||{};
     const is1=d.incomeStatementHistory?.incomeStatementHistory?.[1]||{};
-    const cur=pr.regularMarketPrice?.raw, hi52=sd.fiftyTwoWeekHigh?.raw, lo52=sd.fiftyTwoWeekLow?.raw;
+    const cur = pr.regularMarketPrice?.raw
+             || pr.postMarketPrice?.raw
+             || sd.open?.raw
+             || null;
+    const hi52=sd.fiftyTwoWeekHigh?.raw, lo52=sd.fiftyTwoWeekLow?.raw;
     const ma50=sd.fiftyDayAverage?.raw, ma200=sd.twoHundredDayAverage?.raw;
     const pos52w = hi52&&lo52&&cur ? (((cur-lo52)/(hi52-lo52))*100).toFixed(1) : null;
     const rev0=is0.totalRevenue?.raw, rev1=is1.totalRevenue?.raw;
