@@ -11,31 +11,29 @@ const KR_STOCKS = {
   "한국전력":"015760.KS","크래프톤":"259960.KS","카카오뱅크":"323410.KS",
   "하이브":"352820.KS","엔씨소프트":"036570.KS","에코프로비엠":"247540.KQ",
   "에코프로":"086520.KQ","lg이노텍":"011070.KS","삼성전기":"009150.KS",
-  "엘앤에프":"066970.KQ","l&f":"066970.KQ","lf":"066970.KQ",
-  "포스코퓨처엠":"003670.KS","두산에너빌리티":"034020.KS","고려아연":"010130.KS",
-  "카카오페이":"377300.KQ","넷마블":"251270.KQ","펄어비스":"263750.KQ",
-  "카카오게임즈":"293490.KQ","한미약품":"128940.KS","셀트리온헬스케어":"091990.KQ",
-  "파마리서치":"214450.KQ","알테오젠":"196170.KQ","리가켐바이오":"141080.KQ",
+  "엘앤에프":"066970.KQ","l&f":"066970.KQ","포스코퓨처엠":"003670.KS",
+  "두산에너빌리티":"034020.KS","고려아연":"010130.KS","카카오페이":"377300.KQ",
+  "넷마블":"251270.KQ","펄어비스":"263750.KQ","카카오게임즈":"293490.KQ",
+  "한미약품":"128940.KS","셀트리온헬스케어":"091990.KQ",
 };
 
-// KOSDAQ 종목 코드 목록 (주요)
 const KOSDAQ_CODES = new Set([
   "247540","086520","066970","377300","251270","263750","293490",
-  "091990","214450","196170","141080","035420","035720",
+  "091990","035420","035720","323410","352820","036570",
 ]);
 
-async function fetchV7Quote(ticker) {
-  const fields = "regularMarketPrice,marketCap,trailingPE,priceToBook,fiftyTwoWeekHigh,fiftyTwoWeekLow,fiftyDayAverage,twoHundredDayAverage,dividendYield,longName,shortName,currency,exchange,sector,industry,regularMarketChangePercent";
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=${fields}`;
+// v8/chart - 가장 안정적, 인증 불필요
+async function fetchChart(ticker) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d&includePrePost=false`;
   const r = await fetch(url, { headers:{"User-Agent":UA,"Accept":"application/json"} });
   const json = await r.json();
-  const result = json?.quoteResponse?.result?.[0];
-  return result || null;
+  if (json.chart?.error) return null;
+  return json.chart?.result?.[0] || null;
 }
 
-async function fetchV10Summary(ticker) {
-  // crumb 없이 시도 (일부 경우 동작)
-  const modules = "financialData,defaultKeyStatistics,incomeStatementHistory";
+// v10/quoteSummary - 재무지표용 (crumb 없이 시도)
+async function fetchSummary(ticker) {
+  const modules = "summaryDetail,financialData,defaultKeyStatistics,incomeStatementHistory,assetProfile";
   const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=${modules}`;
   try {
     const r = await fetch(url, { headers:{"User-Agent":UA,"Accept":"application/json"} });
@@ -45,59 +43,46 @@ async function fetchV10Summary(ticker) {
   } catch { return null; }
 }
 
-async function resolveTicker(query) {
+function resolveTicker(query) {
   const q = query.trim();
-  // 6자리 숫자 → KOSDAQ 먼저 체크
-  if (/^\d{6}$/.test(q)) {
-    return KOSDAQ_CODES.has(q) ? q + ".KQ" : q + ".KS";
-  }
+  if (/^\d{6}$/.test(q)) return KOSDAQ_CODES.has(q) ? q+".KQ" : q+".KS";
   if (/^[A-Z0-9.&-]{1,12}$/.test(q.toUpperCase()) && /[A-Z]/.test(q.toUpperCase())) return q.toUpperCase();
   const mapped = KR_STOCKS[q.toLowerCase().replace(/\s/g,"")];
   if (mapped) return mapped;
-
-  // Yahoo 검색 (간단 버전)
-  const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR`;
-  try {
-    const r = await fetch(url, { headers:{"User-Agent":UA} });
-    const data = await r.json();
-    const hit = data?.quotes?.find(r=>r.quoteType==="EQUITY");
-    if (hit) return hit.symbol;
-  } catch {}
-  throw new Error(`"${q}" 종목을 찾을 수 없습니다. 티커를 직접 입력하세요. (예: AAPL, 066970)`);
+  throw new Error(`"${q}" 종목을 찾을 수 없습니다. 코드를 직접 입력하세요. (예: AAPL, 005930, 066970)`);
 }
 
 async function fetchStockData(ticker) {
-  // KS/KQ 자동 시도
-  let q7 = await fetchV7Quote(ticker);
+  let chart = await fetchChart(ticker);
 
   // 실패 시 반대 시장 시도
-  if (!q7 || !q7.regularMarketPrice) {
+  if (!chart?.meta?.regularMarketPrice) {
     const alt = ticker.endsWith(".KS") ? ticker.replace(".KS",".KQ") : ticker.replace(".KQ",".KS");
-    q7 = await fetchV7Quote(alt);
-    if (q7?.regularMarketPrice) ticker = alt;
+    const altChart = await fetchChart(alt);
+    if (altChart?.meta?.regularMarketPrice) { chart = altChart; ticker = alt; }
   }
-  if (!q7 || !q7.regularMarketPrice) throw new Error(`${ticker} 데이터를 가져올 수 없습니다.`);
+  if (!chart?.meta?.regularMarketPrice) throw new Error(`${ticker} 데이터를 가져올 수 없습니다.`);
 
-  // 추가 재무 데이터
-  const v10 = await fetchV10Summary(ticker);
-  const fd = v10?.financialData || {};
-  const ks = v10?.defaultKeyStatistics || {};
-  const is0 = v10?.incomeStatementHistory?.incomeStatementHistory?.[0] || {};
-  const is1 = v10?.incomeStatementHistory?.incomeStatementHistory?.[1] || {};
+  const meta   = chart.meta;
+  const v10    = await fetchSummary(ticker);
+  const sd     = v10?.summaryDetail || {};
+  const fd     = v10?.financialData || {};
+  const ks     = v10?.defaultKeyStatistics || {};
+  const ap     = v10?.assetProfile || {};
+  const is0    = v10?.incomeStatementHistory?.incomeStatementHistory?.[0] || {};
+  const is1    = v10?.incomeStatementHistory?.incomeStatementHistory?.[1] || {};
 
-  const cur = q7.regularMarketPrice
-           ?? q7.ask
-           ?? q7.bid
-           ?? null;
-  const hi52    = q7.fiftyTwoWeekHigh;
-  const lo52    = q7.fiftyTwoWeekLow;
-  const ma50    = q7.fiftyDayAverage;
-  const ma200   = q7.twoHundredDayAverage;
-  const pos52w  = hi52&&lo52&&cur ? (((cur-lo52)/(hi52-lo52))*100).toFixed(1) : null;
-  const rev0    = is0.totalRevenue?.raw, rev1 = is1.totalRevenue?.raw;
+  const cur    = meta.regularMarketPrice;
+  const hi52   = meta.fiftyTwoWeekHigh;
+  const lo52   = meta.fiftyTwoWeekLow;
+  const ma50   = meta.fiftyDayAverage;
+  const ma200  = meta.twoHundredDayAverage;
+  const pos52w = hi52&&lo52&&cur ? (((cur-lo52)/(hi52-lo52))*100).toFixed(1) : null;
+  const rev0   = is0.totalRevenue?.raw, rev1 = is1.totalRevenue?.raw;
   const revGrowth = rev0&&rev1 ? (((rev0-rev1)/Math.abs(rev1))*100).toFixed(1) : null;
-  const currency  = q7.currency || "USD";
-  const isKRW     = currency === "KRW";
+
+  const currency = meta.currency || "USD";
+  const isKRW    = currency === "KRW";
   const fmtP  = v => v ? (isKRW ? `₩${Math.round(v).toLocaleString()}` : `$${parseFloat(v).toFixed(2)}`) : "N/A";
   const fmtCap = v => {
     if (!v) return "-";
@@ -108,24 +93,24 @@ async function fetchStockData(ticker) {
 
   return {
     ticker, currency, isKRW,
-    name:            q7.longName || q7.shortName || ticker,
-    exchange:        q7.exchange || "",
-    sector:          q7.sector || q7.industry || "",
+    name:            meta.longName || meta.shortName || ap.longBusinessSummary?.slice(0,30) || ticker,
+    exchange:        meta.exchangeName || "",
+    sector:          ap.sector || "",
     currentPrice:    cur,
     currentPriceFmt: fmtP(cur),
-    marketCap:       q7.marketCap,
-    marketCapFmt:    fmtCap(q7.marketCap),
+    marketCap:       meta.marketCap,
+    marketCapFmt:    fmtCap(meta.marketCap),
     yearHigh: hi52, yearLow: lo52,
     yearHighFmt: fmtP(hi52), yearLowFmt: fmtP(lo52),
     priceAvg50: ma50, priceAvg200: ma200,
     position52w: pos52w,
     bullAlignment: ma50&&ma200 ? ma50>ma200 : null,
-    per:          q7.trailingPE ?? ks.forwardPE?.raw,
-    pbr:          q7.priceToBook ?? ks.priceToBook?.raw,
+    per:          sd.trailingPE?.raw ?? ks.forwardPE?.raw,
+    pbr:          ks.priceToBook?.raw,
     psr:          ks.priceToSalesTrailing12Months?.raw,
     evEbitda:     ks.enterpriseToEbitda?.raw,
-    dividendYield: q7.dividendYield != null ? (q7.dividendYield*100).toFixed(2) : null,
-    revenueGrowth: revGrowth ?? (fd.revenueGrowth?.raw!=null?(fd.revenueGrowth.raw*100).toFixed(1):null),
+    dividendYield: sd.dividendYield?.raw!=null?(sd.dividendYield.raw*100).toFixed(2):null,
+    revenueGrowth: revGrowth??(fd.revenueGrowth?.raw!=null?(fd.revenueGrowth.raw*100).toFixed(1):null),
     operatingMargin: fd.operatingMargins?.raw!=null?(fd.operatingMargins.raw*100).toFixed(1):null,
     epsGrowth:    ks.earningsGrowth?.raw!=null?(ks.earningsGrowth.raw*100).toFixed(1):null,
     roe:          fd.returnOnEquity?.raw!=null?(fd.returnOnEquity.raw*100).toFixed(1):null,
@@ -141,7 +126,7 @@ export default async function handler(req, res) {
   const { query } = req.body || {};
   if (!query?.trim()) return res.status(400).json({ error:"종목을 입력해주세요." });
   try {
-    const ticker = await resolveTicker(query);
+    const ticker = resolveTicker(query);
     const data   = await fetchStockData(ticker);
     return res.status(200).json(data);
   } catch(e) {
