@@ -94,13 +94,20 @@ export default function StockAnalyzer() {
           </div>
         </div>
 
-        <div style={{display:"flex",gap:8,marginBottom:24}}>
+        {/* 검색창 + 즐겨찾기 추가 버튼 */}
+        <div style={{display:"flex",gap:8,marginBottom:favorites.length>0?8:24}}>
           <div style={{flex:1,position:"relative"}}>
             <input style={{width:"100%",padding:"13px 16px 13px 44px",background:T.inputBg,border:`1px solid ${T.inputBorder}`,borderRadius:9,color:T.text,fontSize:14,fontFamily:"'Sora',sans-serif",transition:"all .2s"}}
               placeholder="종목명 또는 티커  (예: 삼성전자, NVDA, 005930, AAPL)"
               value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&analyze()}/>
             <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:15,color:T.textFaint,pointerEvents:"none"}}>⌕</span>
           </div>
+          {stockData && (
+            <button onClick={addFav}
+              style={{padding:"13px 16px",background:favorites.some(f=>f.query===info.ticker)?T.warnBg:T.neuBg,border:`1px solid ${favorites.some(f=>f.query===info.ticker)?T.warnBdr:T.neuBdr}`,borderRadius:9,color:favorites.some(f=>f.query===info.ticker)?T.warn:T.textSub,fontWeight:600,fontSize:13,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap",cursor:"pointer"}}>
+              {favorites.some(f=>f.query===info.ticker)?"⭐":"☆ 저장"}
+            </button>
+          )}
           <button onClick={analyze} disabled={loading} style={{padding:"13px 24px",background:loading?T.neuBg:T.accent,border:"none",borderRadius:9,color:loading?T.textFaint:"#fff",fontWeight:700,fontSize:13,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap",boxShadow:loading?"none":`0 2px 8px ${T.accent}40`}}>
             {loading?"분석 중…":"분석 →"}
           </button>
@@ -108,14 +115,14 @@ export default function StockAnalyzer() {
 
         {/* 즐겨찾기 바 */}
         {favorites.length > 0 && (
-          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16,marginTop:-12}}>
-            <span style={{fontSize:10,color:T.textFaint,alignSelf:"center",marginRight:2}}>⭐</span>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16,alignItems:"center"}}>
+            <span style={{fontSize:10,color:T.textFaint}}>즐겨찾기</span>
             {favorites.map(f=>(
-              <div key={f.query} style={{display:"flex",alignItems:"center",gap:4,background:T.accentBg,border:`1px solid ${T.accentBorder}`,borderRadius:20,padding:"4px 10px 4px 12px",cursor:"pointer"}}
-                onClick={()=>runFav(f.query)}>
-                <span style={{fontSize:12,color:T.accent,fontWeight:500}}>{f.name.length>10?f.name.slice(0,10)+"…":f.name}</span>
+              <div key={f.query} style={{display:"flex",alignItems:"center",gap:3,background:T.accentBg,border:`1px solid ${T.accentBorder}`,borderRadius:20,padding:"4px 8px 4px 12px",cursor:"pointer"}}
+                onClick={()=>{setQuery(f.query);}}>
+                <span style={{fontSize:12,color:T.accent,fontWeight:500}}>{f.name.length>8?f.name.slice(0,8)+"…":f.name}</span>
                 <button onClick={e=>{e.stopPropagation();removeFav(f.query);}}
-                  style={{background:"none",border:"none",color:T.textFaint,fontSize:14,lineHeight:1,padding:"0 2px",cursor:"pointer",fontFamily:"inherit"}}>×</button>
+                  style={{background:"none",border:"none",color:T.textFaint,fontSize:15,lineHeight:1,padding:"0 3px",cursor:"pointer"}}>×</button>
               </div>
             ))}
           </div>
@@ -134,15 +141,13 @@ export default function StockAnalyzer() {
                 <span style={{background:T.neuBg,color:T.neu,border:`1px solid ${T.neuBdr}`,padding:"2px 9px",borderRadius:5,fontSize:10}}>{info.exchange}</span>
                 <span style={{background:T.posBg,color:T.pos,border:`1px solid ${T.posBdr}`,padding:"2px 9px",borderRadius:5,fontSize:10}}>{info.sector}</span>
               </div>
-              <div style={{fontSize:28,fontWeight:800,fontFamily:"'IBM Plex Mono',monospace",color:T.accent,marginBottom:3}}>{info.currentPriceFmt}</div>
+              <div style={{fontSize:28,fontWeight:800,fontFamily:"'IBM Plex Mono',monospace",color:T.accent,marginBottom:3}}>
+                {info.currentPriceFmt || (info.currentPrice ? fmt(info.currentPrice) : "—")}
+              </div>
               <div style={{fontSize:11,color:T.textSub,marginBottom:10}}>시가총액 · {fmtCap(info.marketCap)}</div>
-              <div style={{display:"flex",gap:16,alignItems:"center"}}>
+              <div style={{display:"flex",gap:16}}>
                 <div style={{fontSize:10,color:T.textFaint}}>52주 고 <span style={{color:T.neg,fontWeight:600}}>{info.yearHighFmt}</span></div>
                 <div style={{fontSize:10,color:T.textFaint}}>52주 저 <span style={{color:T.pos,fontWeight:600}}>{info.yearLowFmt}</span></div>
-                <button onClick={addFav}
-                  style={{marginLeft:"auto",fontSize:10,color:favorites.some(f=>f.query===info.ticker)?T.warn:T.textFaint,background:"none",border:`1px solid ${T.cardBorder}`,borderRadius:6,padding:"3px 10px",cursor:"pointer",fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap"}}>
-                  {favorites.some(f=>f.query===info.ticker)?"⭐ 저장됨":"☆ 즐겨찾기"}
-                </button>
               </div>
             </div>
             {/* 2단계 로딩 중이면 AI 분석 대기 표시 */}

@@ -85,7 +85,10 @@ async function fetchStockData(ticker) {
   const is0 = v10?.incomeStatementHistory?.incomeStatementHistory?.[0] || {};
   const is1 = v10?.incomeStatementHistory?.incomeStatementHistory?.[1] || {};
 
-  const cur     = q7.regularMarketPrice;
+  const cur = q7.regularMarketPrice
+           ?? q7.ask
+           ?? q7.bid
+           ?? null;
   const hi52    = q7.fiftyTwoWeekHigh;
   const lo52    = q7.fiftyTwoWeekLow;
   const ma50    = q7.fiftyDayAverage;
