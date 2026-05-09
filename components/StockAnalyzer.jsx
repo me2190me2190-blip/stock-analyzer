@@ -43,7 +43,7 @@ export default function StockAnalyzer() {
 
   return (
     <div style={{minHeight:"100vh",background:T.bg,color:T.text,fontFamily:"'Sora',sans-serif",padding:"22px 16px",transition:"background .3s"}}>
-      <style>{`*{box-sizing:border-box;}input::placeholder{color:${T.textFaint};}input:focus{outline:none;border-color:${T.accent}!important;}button{cursor:pointer;}button:hover:not(:disabled){opacity:.85;}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`*{box-sizing:border-box;}input::placeholder{color:${T.textFaint};}input:focus{outline:none;border-color:${T.accent}!important;}button{cursor:pointer;}button:hover:not(:disabled){opacity:.85;}@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}.fade-1{animation:fadeUp .5s ease both}.fade-2{animation:fadeUp .5s .1s ease both}.fade-3{animation:fadeUp .5s .2s ease both}.fade-4{animation:fadeUp .5s .3s ease both}.fade-5{animation:fadeUp .5s .4s ease both}.fade-6{animation:fadeUp .5s .5s ease both}`}</style>
       <div style={{maxWidth:880,margin:"0 auto"}}>
 
         <div style={{display:"flex",alignItems:"center",gap:12,paddingBottom:18,marginBottom:22,borderBottom:`1px solid ${T.cardBorder}`}}>
@@ -80,7 +80,7 @@ export default function StockAnalyzer() {
           const allP=[sl,bL,cur,tgt].filter(Boolean),minP=Math.min(...allP)*.97,maxP=Math.max(...allP)*1.03;
           const pct=v=>`${Math.max(0,Math.min(100,((v-minP)/(maxP-minP))*100)).toFixed(1)}%`;
           return(<>
-            <div style={{display:"flex",gap:12,marginBottom:12,flexWrap:"wrap"}}>
+            <div className="fade-1" style={{display:"flex",gap:12,marginBottom:12,flexWrap:"wrap"}}>
               <div style={{...card(),flex:"1 1 280px"}}>
                 <div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:10}}>STOCK INFO</div>
                 <div style={{fontSize:20,fontWeight:700,marginBottom:9,lineHeight:1.3}}>{info.name}</div>
@@ -106,7 +106,7 @@ export default function StockAnalyzer() {
               </div>
             </div>
 
-            <div style={{...card(),marginBottom:12}}>
+            <div className="fade-2" style={{...card(),marginBottom:12}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 36px"}}>
                 <div><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:12}}>객관적 지표 (80점)</div>{CAT.map(c=><Bar key={c.key} label={c.label} score={bd[c.key]??0} max={c.max} color={c.color} T={T}/>)}</div>
                 <div><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:12}}>업계동향 & 이슈 (20점)</div>
@@ -117,13 +117,12 @@ export default function StockAnalyzer() {
               </div>
             </div>
 
-            <div style={{...card(),marginBottom:12,background:dark?"#060E1C":T.accentBg,borderColor:dark?"#0F2040":T.accentBorder}}>
+            <div className="fade-3" style={{...card(),marginBottom:12,background:dark?"#060E1C":T.accentBg,borderColor:dark?"#0F2040":T.accentBorder}}>
               <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:10}}><div style={{width:3,height:14,background:T.accent,borderRadius:2}}/><span style={{fontSize:9,color:T.accent,letterSpacing:2,fontWeight:700}}>점수 산정 근거</span></div>
               <p style={{fontSize:13,color:T.text,lineHeight:1.8}}>{s.rationale}</p>
             </div>
 
-            <div style={{...card(),marginBottom:12}}>
-              <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:16}}><div style={{width:3,height:14,background:T.warn,borderRadius:2}}/><span style={{fontSize:9,color:T.warn,letterSpacing:2,fontWeight:700}}>가격 목표</span>{pt.basis&&<span style={{marginLeft:"auto",fontSize:10,color:T.textFaint,maxWidth:360,textAlign:"right"}}>{pt.basis}</span>}</div>
+            <div className="fade-4" style={{...card(),marginBottom:12}}><span style={{fontSize:9,color:T.warn,letterSpacing:2,fontWeight:700}}>가격 목표</span>{pt.basis&&<span style={{marginLeft:"auto",fontSize:10,color:T.textFaint,maxWidth:360,textAlign:"right"}}>{pt.basis}</span>}</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:20}}>
                 {[{label:"손절가",v:sl,c:T.neg,bg:T.negBg,b:T.negBdr,i:"▼",sub:null},{label:"매수존",v:null,c:T.pos,bg:T.posBg,b:T.posBdr,i:"◎",sub:`${fmt(bL)}~${fmt(bH)}`},{label:"현재가",v:cur,c:T.accent,bg:T.accentBg,b:T.accentBorder,i:"◆",sub:null},{label:"목표주가",v:tgt,c:T.warn,bg:T.warnBg,b:T.warnBdr,i:"▲",sub:pt.upside?`+${pt.upside}%`:null}].map(b=>(
                   <div key={b.label} style={{background:b.bg,border:`1px solid ${b.b}`,borderRadius:9,padding:"11px 12px",textAlign:"center"}}>
@@ -150,15 +149,15 @@ export default function StockAnalyzer() {
               </div>
             </div>
 
-            <div style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap"}}>
+            <div className="fade-5" style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap"}}>
               {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"8px 18px",borderRadius:7,fontSize:12,border:`1px solid ${tab===t.id?T.accent:T.cardBorder}`,background:tab===t.id?T.accentBg:T.card,color:tab===t.id?T.accent:T.textSub,fontFamily:"'Sora',sans-serif",fontWeight:500,transition:"all .2s"}}>{t.label}</button>)}
             </div>
 
-            {tab==="indicators"&&<div style={card()}>{IND.map(g=>(<div key={g.key} style={{marginBottom:24}}><div style={{display:"flex",alignItems:"center",gap:7,marginBottom:10}}><div style={{width:3,height:11,background:g.color,borderRadius:2}}/><span style={{fontSize:9,color:g.color,letterSpacing:2,fontWeight:700}}>{g.label.toUpperCase()}</span></div><div style={{display:"grid",gridTemplateColumns:"1.8fr 0.9fr 1.5fr 55px 65px",gap:7,padding:"6px 9px",background:T.tableHead,borderRadius:5,marginBottom:2}}>{["지표명","수치","벤치마크","점수","평가"].map(h=><span key={h} style={{fontSize:9,color:T.textFaint,fontWeight:600}}>{h}</span>)}</div>{r.indicators?.[g.key]?.map((ind,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1.8fr 0.9fr 1.5fr 55px 65px",gap:7,padding:"10px 9px",borderBottom:`1px solid ${T.divider}`,alignItems:"center"}}><div><div style={{fontSize:12,fontWeight:500}}>{ind.name}</div><div style={{fontSize:10,color:T.textFaint,marginTop:1}}>{ind.comment}</div></div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,fontWeight:700,color:ind.status==="good"?T.pos:ind.status==="bad"?T.neg:T.textSub}}>{ind.value}</div><div style={{fontSize:10,color:T.textFaint,lineHeight:1.4}}>{ind.benchmark}</div><Dots score={ind.score??0} max={5} T={T}/><Bdg status={ind.status} T={T}/></div>))}</div>))}</div>}
+            {tab==="indicators"&&<div className="fade-6" style={card()}>{IND.map(g=>(<div key={g.key} style={{marginBottom:24}}><div style={{display:"flex",alignItems:"center",gap:7,marginBottom:10}}><div style={{width:3,height:11,background:g.color,borderRadius:2}}/><span style={{fontSize:9,color:g.color,letterSpacing:2,fontWeight:700}}>{g.label.toUpperCase()}</span></div><div style={{display:"grid",gridTemplateColumns:"1.8fr 0.9fr 1.5fr 55px 65px",gap:7,padding:"6px 9px",background:T.tableHead,borderRadius:5,marginBottom:2}}>{["지표명","수치","벤치마크","점수","평가"].map(h=><span key={h} style={{fontSize:9,color:T.textFaint,fontWeight:600}}>{h}</span>)}</div>{r.indicators?.[g.key]?.map((ind,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1.8fr 0.9fr 1.5fr 55px 65px",gap:7,padding:"10px 9px",borderBottom:`1px solid ${T.divider}`,alignItems:"center"}}><div><div style={{fontSize:12,fontWeight:500}}>{ind.name}</div><div style={{fontSize:10,color:T.textFaint,marginTop:1}}>{ind.comment}</div></div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,fontWeight:700,color:ind.status==="good"?T.pos:ind.status==="bad"?T.neg:T.textSub}}>{ind.value}</div><div style={{fontSize:10,color:T.textFaint,lineHeight:1.4}}>{ind.benchmark}</div><Dots score={ind.score??0} max={5} T={T}/><Bdg status={ind.status} T={T}/></div>))}</div>))}</div>}
 
-            {tab==="industry"&&<div style={card()}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>{[{label:"업계 성장성/트렌드",score:ibd.trend,max:8,text:r.industryAnalysis?.trendSummary},{label:"경쟁 포지션/해자",score:ibd.competitive,max:6,text:r.industryAnalysis?.competitiveSummary}].map(item=>(<div key={item.label} style={{background:T.posBg,border:`1px solid ${T.posBdr}`,borderRadius:9,padding:14}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:9}}><span style={{fontSize:9,color:T.pos,letterSpacing:1.5,fontWeight:700}}>{item.label}</span><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,color:T.pos}}>{item.score}<span style={{fontSize:10,color:T.textFaint}}>/{item.max}</span></span></div><p style={{fontSize:12,color:T.textSub,lineHeight:1.65,margin:0}}>{item.text}</p></div>))}</div><div style={{marginBottom:16}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:9,color:T.textFaint,letterSpacing:2,fontWeight:700}}>최근 주요 이슈</span><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700,color:T.warn}}>{ibd.issues}<span style={{fontSize:10,color:T.textFaint}}>/6</span></span></div>{r.industryAnalysis?.issues?.map((issue,i)=><ICard key={i} {...issue} T={T}/>)}</div><div style={{background:T.tableHead,border:`1px solid ${T.divider}`,borderRadius:9,padding:14}}><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:8,fontWeight:700}}>향후 전망 (3~6개월)</div><p style={{fontSize:12,color:T.textSub,lineHeight:1.7,margin:0}}>{r.outlook}</p></div></div>}
+            {tab==="industry"&&<div className="fade-6" style={card()}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>{[{label:"업계 성장성/트렌드",score:ibd.trend,max:8,text:r.industryAnalysis?.trendSummary},{label:"경쟁 포지션/해자",score:ibd.competitive,max:6,text:r.industryAnalysis?.competitiveSummary}].map(item=>(<div key={item.label} style={{background:T.posBg,border:`1px solid ${T.posBdr}`,borderRadius:9,padding:14}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:9}}><span style={{fontSize:9,color:T.pos,letterSpacing:1.5,fontWeight:700}}>{item.label}</span><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,color:T.pos}}>{item.score}<span style={{fontSize:10,color:T.textFaint}}>/{item.max}</span></span></div><p style={{fontSize:12,color:T.textSub,lineHeight:1.65,margin:0}}>{item.text}</p></div>))}</div><div style={{marginBottom:16}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:9,color:T.textFaint,letterSpacing:2,fontWeight:700}}>최근 주요 이슈</span><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700,color:T.warn}}>{ibd.issues}<span style={{fontSize:10,color:T.textFaint}}>/6</span></span></div>{r.industryAnalysis?.issues?.map((issue,i)=><ICard key={i} {...issue} T={T}/>)}</div><div style={{background:T.tableHead,border:`1px solid ${T.divider}`,borderRadius:9,padding:14}}><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:8,fontWeight:700}}>향후 전망 (3~6개월)</div><p style={{fontSize:12,color:T.textSub,lineHeight:1.7,margin:0}}>{r.outlook}</p></div></div>}
 
-            {tab==="precautions"&&<div style={card()}><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:14,fontWeight:700}}>투자 유의사항</div>{r.precautions?.map((p2,i)=><PCard key={i} {...p2} T={T}/>)}<div style={{marginTop:16,background:T.tableHead,borderRadius:7,padding:"11px 14px",fontSize:10,color:T.textFaint,textAlign:"center",lineHeight:1.8}}>※ 본 분석은 AI 참고 정보이며 투자 권유가 아닙니다.</div></div>}
+            {tab==="precautions"&&<div className="fade-6" style={card()}><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:14,fontWeight:700}}>투자 유의사항</div>{r.precautions?.map((p2,i)=><PCard key={i} {...p2} T={T}/>)}<div style={{marginTop:16,background:T.tableHead,borderRadius:7,padding:"11px 14px",fontSize:10,color:T.textFaint,textAlign:"center",lineHeight:1.8}}>※ 본 분석은 AI 참고 정보이며 투자 권유가 아닙니다.</div></div>}
           </>);
         })()}
 

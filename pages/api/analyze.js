@@ -148,7 +148,7 @@ priceTargets 가격은 ${s.currency} 숫자만.`;
       method: "POST",
       headers: { "Content-Type":"application/json","x-api-key":process.env.ANTHROPIC_API_KEY,"anthropic-version":"2023-06-01","anthropic-beta":"prompt-caching-2024-07-31" },
       body: JSON.stringify({
-        model:"claude-haiku-4-5-20251001", max_tokens:4500,
+        model:"claude-sonnet-4-5-20250929", max_tokens:4500,
         system:[{type:"text",text:SYSTEM_PROMPT,cache_control:{type:"ephemeral"}}],
         messages:[{role:"user",content:prompt}],
       }),
@@ -163,6 +163,11 @@ priceTargets 가격은 ${s.currency} 숫자만.`;
     const analysis = JSON.parse(match[0]);
     return res.status(200).json({
       ...analysis,
+      priceTargets: {
+        ...analysis.priceTargets,
+        currentPrice: s.currentPrice ? String(Math.round(s.currentPrice)) : analysis.priceTargets?.currentPrice,
+        currency: s.currency,
+      },
       stockInfo: {
         ...analysis.stockInfo,
         name: s.name, ticker: s.ticker, market: s.exchange,
