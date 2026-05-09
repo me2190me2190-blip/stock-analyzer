@@ -45,10 +45,13 @@ async function fetchSummary(ticker) {
 
 function resolveTicker(query) {
   const q = query.trim();
+  // 6자리 숫자
   if (/^\d{6}$/.test(q)) return KOSDAQ_CODES.has(q) ? q+".KQ" : q+".KS";
-  if (/^[A-Z0-9.&-]{1,12}$/.test(q.toUpperCase()) && /[A-Z]/.test(q.toUpperCase())) return q.toUpperCase();
+  // 한국 종목명 매핑 먼저 (L&F, 삼성전자 등)
   const mapped = KR_STOCKS[q.toLowerCase().replace(/\s/g,"")];
   if (mapped) return mapped;
+  // 영문 티커
+  if (/^[A-Z0-9.-]{1,12}$/.test(q.toUpperCase()) && /[A-Z]/.test(q.toUpperCase())) return q.toUpperCase();
   throw new Error(`"${q}" 종목을 찾을 수 없습니다. 코드를 직접 입력하세요. (예: AAPL, 005930, 066970)`);
 }
 
