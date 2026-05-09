@@ -27,7 +27,7 @@ export default function StockAnalyzer() {
     if (!query.trim() || loading) return;
     setLoad(true); setError(null); setResult(null); setTab("indicators");
     try {
-      const res  = await fetch("/api/analyze", {method:"POST",headers:{"Content-Type":"application/json","x-token":token||""},body:JSON.stringify({query})});
+      const res  = await fetch("/api/analyze", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query})});
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "분석 실패");
       setResult(data);
