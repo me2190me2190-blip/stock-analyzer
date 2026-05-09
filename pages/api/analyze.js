@@ -26,8 +26,13 @@ const KR_STOCKS = {
   "에코프로":"086520.KS","lg이노텍":"011070.KS","삼성전기":"009150.KS",
 };
 
-/* Yahoo Finance crumb 취득 */
+/* Yahoo Finance crumb 캐싱 (warm instance에서 재사용) */
+let _cache = null;
+let _cacheTime = 0;
+
 async function getYFSession() {
+  if (_cache && Date.now() - _cacheTime < 50 * 60 * 1000) return _cache; // 50분 캐시
+
   const r1 = await fetch("https://finance.yahoo.com/", {
     headers: { "User-Agent": UA, "Accept": "text/html" },
     redirect: "follow",
@@ -41,7 +46,9 @@ async function getYFSession() {
     headers: { "User-Agent": UA, "Cookie": cookies },
   });
   const crumb = await r2.text();
-  return { cookies, crumb };
+  _cache = { cookies, crumb };
+  _cacheTime = Date.now();
+  return _cache;
 }
 
 function resolveTicker(query) {
@@ -141,7 +148,7 @@ priceTargets 가격은 ${s.currency} 숫자만.`;
       method: "POST",
       headers: { "Content-Type":"application/json","x-api-key":process.env.ANTHROPIC_API_KEY,"anthropic-version":"2023-06-01","anthropic-beta":"prompt-caching-2024-07-31" },
       body: JSON.stringify({
-        model:"claude-sonnet-4-5-20250929", max_tokens:4500,
+        model:"claude-haiku-4-5-20251001", max_tokens:4500,
         system:[{type:"text",text:SYSTEM_PROMPT,cache_control:{type:"ephemeral"}}],
         messages:[{role:"user",content:prompt}],
       }),

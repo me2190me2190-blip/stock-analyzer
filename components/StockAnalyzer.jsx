@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 const L={bg:"#F0F5FF",card:"#FFF",cardBorder:"#E0E8F5",shadow:"0 2px 8px rgba(37,99,235,.07),0 1px 3px rgba(0,0,0,.05)",accent:"#2563EB",accentBg:"#EFF6FF",accentBorder:"#BFDBFE",text:"#0F172A",textSub:"#475569",textFaint:"#94A3B8",mono:"#1D4ED8",track:"#E2E8F0",inputBg:"#F8FAFC",inputBorder:"#CBD5E1",tableHead:"#F1F5F9",divider:"#EEF2FA",pos:"#059669",posBg:"#ECFDF5",posBdr:"#A7F3D0",neg:"#DC2626",negBg:"#FEF2F2",negBdr:"#FECACA",warn:"#D97706",warnBg:"#FFFBEB",warnBdr:"#FDE68A",neu:"#64748B",neuBg:"#F1F5F9",neuBdr:"#CBD5E1"};
-const D={bg:"#07090E",card:"#0D1219",cardBorder:"#1A2535",shadow:"none",accent:"#38BDF8",accentBg:"#051219",accentBorder:"#0C2A3C",text:"#F1F5F9",textSub:"#94A3B8",textFaint:"#374151",mono:"#38BDF8",track:"#1A2535",inputBg:"#0D1219",inputBorder:"#1A2535",tableHead:"#060A10",divider:"#111827",pos:"#34D399",posBg:"#022C22",posBdr:"#064E3B",neg:"#F87171",negBg:"#1C0404",negBdr:"#7F1D1D",warn:"#FBBF24",warnBg:"#1C1000",warnBdr:"#92400E",neu:"#94A3B8",neuBg:"#111827",neuBdr:"#1F2937"};
+const D={bg:"#07090E",card:"#0D1219",cardBorder:"#1A2535",shadow:"none",accent:"#38BDF8",accentBg:"#051219",accentBorder:"#0C2A3C",text:"#F1F5F9",textSub:"#A8B5C5",textFaint:"#6B7280",mono:"#38BDF8",track:"#1A2535",inputBg:"#0D1219",inputBorder:"#1A2535",tableHead:"#060A10",divider:"#1A2535",pos:"#34D399",posBg:"#022C22",posBdr:"#064E3B",neg:"#F87171",negBg:"#1C0404",negBdr:"#7F1D1D",warn:"#FBBF24",warnBg:"#1C1000",warnBdr:"#92400E",neu:"#94A3B8",neuBg:"#111827",neuBdr:"#1F2937"};
 const GC={light:{S:{c:"#7C3AED",bg:"#F5F3FF",tx:"#4C1D95",bd:"#C4B5FD",d:"최우량"},A:{c:"#059669",bg:"#ECFDF5",tx:"#064E3B",bd:"#6EE7B7",d:"우량"},B:{c:"#D97706",bg:"#FFFBEB",tx:"#78350F",bd:"#FCD34D",d:"양호"},C:{c:"#EA580C",bg:"#FFF7ED",tx:"#7C2D12",bd:"#FDBA74",d:"보통"},D:{c:"#DC2626",bg:"#FEF2F2",tx:"#7F1D1D",bd:"#FCA5A5",d:"주의"}},dark:{S:{c:"#8B5CF6",bg:"#1E0A3C",tx:"#DDD6FE",bd:"#5B21B6",d:"최우량"},A:{c:"#10B981",bg:"#022C22",tx:"#A7F3D0",bd:"#065F46",d:"우량"},B:{c:"#F59E0B",bg:"#1C1400",tx:"#FDE68A",bd:"#92400E",d:"양호"},C:{c:"#F97316",bg:"#1C0A00",tx:"#FFEDD5",bd:"#9A3412",d:"보통"},D:{c:"#EF4444",bg:"#200606",tx:"#FECACA",bd:"#991B1B",d:"주의"}}};
 const CAT=[{key:"value",label:"가치 지표",max:20,color:"#2563EB"},{key:"growth",label:"성장성",max:20,color:"#059669"},{key:"financial",label:"재무건전성",max:20,color:"#7C3AED"},{key:"momentum",label:"기술적 모멘텀",max:20,color:"#D97706"}];
 const IND=[{key:"value",label:"가치 지표",color:"#2563EB"},{key:"growth",label:"성장성 지표",color:"#059669"},{key:"financial",label:"재무건전성",color:"#7C3AED"},{key:"momentum",label:"기술적 모멘텀·이평선",color:"#D97706"}];
@@ -48,7 +48,7 @@ export default function StockAnalyzer() {
 
         <div style={{display:"flex",alignItems:"center",gap:12,paddingBottom:18,marginBottom:22,borderBottom:`1px solid ${T.cardBorder}`}}>
           <div style={{width:32,height:32,background:T.accent,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,color:"#fff",fontWeight:800}}>◈</div>
-          <div><h1 style={{fontSize:18,fontWeight:700,letterSpacing:-.3}}>주식 분석기</h1><p style={{fontSize:10,color:T.textFaint,marginTop:1}}>FMP 실시간 데이터 · Claude AI · 미국 & 한국 주식</p></div>
+          <div><h1 style={{fontSize:18,fontWeight:700,letterSpacing:-.3}}>주식 분석기</h1><p style={{fontSize:10,color:T.textFaint,marginTop:1}}>Yahoo Finance · Claude AI · 미국 & 한국 주식</p></div>
           <div style={{marginLeft:"auto",display:"flex",background:T.neuBg,border:`1px solid ${T.neuBdr}`,borderRadius:7,padding:2,gap:2}}>
             {[{v:false,i:"☀️",l:"라이트"},{v:true,i:"🌙",l:"다크"}].map(o=>(
               <button key={o.l} onClick={()=>setDark(o.v)} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:5,fontSize:11,fontWeight:600,fontFamily:"'Sora',sans-serif",border:"none",background:dark===o.v?T.card:T.neuBg,color:dark===o.v?T.text:T.textFaint,boxShadow:dark===o.v?"0 1px 3px rgba(0,0,0,.1)":"none",transition:"all .2s"}}>
@@ -70,7 +70,7 @@ export default function StockAnalyzer() {
           </button>
         </div>
 
-        {loading&&<div style={{...card(),padding:"36px 24px",textAlign:"center"}}><div style={{width:44,height:44,border:`3px solid ${T.accentBorder}`,borderTopColor:T.accent,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 16px"}}/><div style={{fontSize:15,fontWeight:700,color:T.accent,marginBottom:4}}>데이터 수집 & AI 분석 중</div><div style={{fontSize:12,color:T.textFaint}}>FMP 실시간 데이터 → Claude 분석 (보통 5~8초)</div></div>}
+        {loading&&<div style={{...card(),padding:"36px 24px",textAlign:"center"}}><div style={{width:44,height:44,border:`3px solid ${T.accentBorder}`,borderTopColor:T.accent,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 16px"}}/><div style={{fontSize:15,fontWeight:700,color:T.accent,marginBottom:4}}>데이터 수집 & AI 분석 중</div><div style={{fontSize:12,color:T.textFaint}}>Yahoo Finance 데이터 → Claude 분석 (보통 5~8초)</div></div>}
 
         {error&&!loading&&<div style={{...card(),borderColor:T.negBdr,background:T.negBg,marginBottom:14}}><div style={{color:T.neg,fontWeight:700,marginBottom:4}}>✕ 오류</div><div style={{color:T.textSub,fontSize:13}}>{error}</div></div>}
 
