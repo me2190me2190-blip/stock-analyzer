@@ -1,9 +1,4 @@
-const YF_SUMMARY = "https://query2.finance.yahoo.com/v10/finance/quoteSummary";
-const YF_SEARCH  = "https://query2.finance.yahoo.com/v1/finance/search";
-const YF_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-  "Accept": "application/json",
-};
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 const SYSTEM_PROMPT = `당신은 기관급 주식 분석 AI입니다. 제공된 실제 재무 데이터를 기반으로 100점 만점 점수를 산출하세요. 웹 검색 없이 주어진 데이터만 사용합니다.
 
@@ -31,23 +26,39 @@ const KR_STOCKS = {
   "에코프로":"086520.KS","lg이노텍":"011070.KS","삼성전기":"009150.KS",
 };
 
-async function resolveTicker(query) {
+/* Yahoo Finance crumb 취득 */
+async function getYFSession() {
+  const r1 = await fetch("https://finance.yahoo.com/", {
+    headers: { "User-Agent": UA, "Accept": "text/html" },
+    redirect: "follow",
+  });
+  const cookieHeaders = typeof r1.headers.getSetCookie === "function"
+    ? r1.headers.getSetCookie()
+    : [r1.headers.get("set-cookie")].filter(Boolean);
+  const cookies = cookieHeaders.map(c => c.split(";")[0]).join("; ");
+
+  const r2 = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+    headers: { "User-Agent": UA, "Cookie": cookies },
+  });
+  const crumb = await r2.text();
+  return { cookies, crumb };
+}
+
+function resolveTicker(query) {
   const q = query.trim();
   if (/^\d{6}$/.test(q)) return q + ".KS";
   if (/^[A-Z0-9.]{1,12}$/.test(q.toUpperCase())) return q.toUpperCase();
-  const mapped = KR_STOCKS[q.toLowerCase().replace(/\s/g,"")];
+  const mapped = KR_STOCKS[q.toLowerCase().replace(/\s/g, "")];
   if (mapped) return mapped;
-  const res  = await fetch(`${YF_SEARCH}?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR`, { headers: YF_HEADERS });
-  const data = await res.json();
-  const hit  = data?.quotes?.find(r => r.quoteType === "EQUITY");
-  if (hit) return hit.symbol;
   throw new Error(`"${q}" 종목을 찾을 수 없습니다. 티커를 직접 입력하세요. (예: AAPL, 005930.KS)`);
 }
 
-async function fetchStockData(ticker) {
+async function fetchStockData(ticker, cookies, crumb) {
   const modules = "summaryDetail,financialData,defaultKeyStatistics,incomeStatementHistory,price";
-  const res  = await fetch(`${YF_SUMMARY}/${ticker}?modules=${modules}&lang=en-US`, { headers: YF_HEADERS });
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=${modules}&crumb=${encodeURIComponent(crumb)}`;
+  const res  = await fetch(url, { headers: { "User-Agent": UA, "Cookie": cookies } });
   const json = await res.json();
+
   if (json.quoteSummary?.error) throw new Error(`데이터 오류: ${json.quoteSummary.error.description}`);
   const d = json.quoteSummary?.result?.[0];
   if (!d) throw new Error(`${ticker} 데이터를 가져올 수 없습니다.`);
@@ -59,17 +70,17 @@ async function fetchStockData(ticker) {
   const is0 = d.incomeStatementHistory?.incomeStatementHistory?.[0] || {};
   const is1 = d.incomeStatementHistory?.incomeStatementHistory?.[1] || {};
 
-  const cur   = pr.regularMarketPrice?.raw;
-  const hi52  = sd.fiftyTwoWeekHigh?.raw;
-  const lo52  = sd.fiftyTwoWeekLow?.raw;
-  const ma50  = sd.fiftyDayAverage?.raw;
-  const ma200 = sd.twoHundredDayAverage?.raw;
+  const cur    = pr.regularMarketPrice?.raw;
+  const hi52   = sd.fiftyTwoWeekHigh?.raw;
+  const lo52   = sd.fiftyTwoWeekLow?.raw;
+  const ma50   = sd.fiftyDayAverage?.raw;
+  const ma200  = sd.twoHundredDayAverage?.raw;
   const pos52w = hi52 && lo52 && cur ? (((cur-lo52)/(hi52-lo52))*100).toFixed(1) : null;
-  const rev0 = is0.totalRevenue?.raw, rev1 = is1.totalRevenue?.raw;
+  const rev0   = is0.totalRevenue?.raw, rev1 = is1.totalRevenue?.raw;
   const revGrowth = rev0 && rev1 ? (((rev0-rev1)/Math.abs(rev1))*100).toFixed(1) : null;
-  const currency = pr.currency || "USD";
-  const isKRW = currency === "KRW";
-  const fmtP = v => v ? (isKRW ? `₩${Math.round(v).toLocaleString()}` : `$${parseFloat(v).toFixed(2)}`) : "N/A";
+  const currency  = pr.currency || "USD";
+  const isKRW     = currency === "KRW";
+  const fmtP  = v => v ? (isKRW ? `₩${Math.round(v).toLocaleString()}` : `$${parseFloat(v).toFixed(2)}`) : "N/A";
   const fmtCap = v => {
     if (!v) return "-";
     if (isKRW) return `${(v/1e12).toFixed(1)}조원`;
@@ -84,25 +95,24 @@ async function fetchStockData(ticker) {
     sector:          pr.sector || "",
     currentPrice:    cur,
     currentPriceFmt: fmtP(cur),
-    marketCap:       pr.marketCap?.raw,
     marketCapFmt:    fmtCap(pr.marketCap?.raw),
-    yearHigh:        hi52, yearLow: lo52,
-    priceAvg50:      ma50, priceAvg200: ma200,
-    position52w:     pos52w,
-    bullAlignment:   ma50 && ma200 ? ma50 > ma200 : null,
-    per:             sd.trailingPE?.raw ?? ks.forwardPE?.raw,
-    pbr:             ks.priceToBook?.raw,
-    psr:             ks.priceToSalesTrailing12Months?.raw,
-    evEbitda:        ks.enterpriseToEbitda?.raw,
-    dividendYield:   sd.dividendYield?.raw != null ? (sd.dividendYield.raw*100).toFixed(2) : null,
-    revenueGrowth:   revGrowth ?? (fd.revenueGrowth?.raw != null ? (fd.revenueGrowth.raw*100).toFixed(1) : null),
+    yearHigh: hi52, yearLow: lo52,
+    priceAvg50: ma50, priceAvg200: ma200,
+    position52w: pos52w,
+    bullAlignment: ma50 && ma200 ? ma50 > ma200 : null,
+    per:          sd.trailingPE?.raw ?? ks.forwardPE?.raw,
+    pbr:          ks.priceToBook?.raw,
+    psr:          ks.priceToSalesTrailing12Months?.raw,
+    evEbitda:     ks.enterpriseToEbitda?.raw,
+    dividendYield: sd.dividendYield?.raw != null ? (sd.dividendYield.raw*100).toFixed(2) : null,
+    revenueGrowth: revGrowth ?? (fd.revenueGrowth?.raw != null ? (fd.revenueGrowth.raw*100).toFixed(1) : null),
     operatingMargin: fd.operatingMargins?.raw != null ? (fd.operatingMargins.raw*100).toFixed(1) : null,
-    epsGrowth:       ks.earningsGrowth?.raw != null ? (ks.earningsGrowth.raw*100).toFixed(1) : null,
-    roe:             fd.returnOnEquity?.raw != null ? (fd.returnOnEquity.raw*100).toFixed(1) : null,
-    roa:             fd.returnOnAssets?.raw != null ? (fd.returnOnAssets.raw*100).toFixed(1) : null,
-    debtEquity:      fd.debtToEquity?.raw,
-    currentRatio:    fd.currentRatio?.raw,
-    fcf:             fd.freeCashflow?.raw,
+    epsGrowth:    ks.earningsGrowth?.raw != null ? (ks.earningsGrowth.raw*100).toFixed(1) : null,
+    roe:          fd.returnOnEquity?.raw != null ? (fd.returnOnEquity.raw*100).toFixed(1) : null,
+    roa:          fd.returnOnAssets?.raw != null ? (fd.returnOnAssets.raw*100).toFixed(1) : null,
+    debtEquity:   fd.debtToEquity?.raw,
+    currentRatio: fd.currentRatio?.raw,
+    fcf:          fd.freeCashflow?.raw,
   };
 }
 
@@ -112,8 +122,9 @@ export default async function handler(req, res) {
   if (!query?.trim()) return res.status(400).json({ error: "종목을 입력해주세요." });
 
   try {
-    const ticker    = await resolveTicker(query);
-    const s         = await fetchStockData(ticker);
+    const ticker          = resolveTicker(query);
+    const { cookies, crumb } = await getYFSession();
+    const s               = await fetchStockData(ticker, cookies, crumb);
 
     const prompt = `다음 실제 재무 데이터를 기반으로 분석:
 종목: ${s.name} (${s.ticker}) / ${s.exchange} / ${s.sector}
@@ -121,11 +132,9 @@ export default async function handler(req, res) {
 52주 고: ${s.fmtP(s.yearHigh)} | 저: ${s.fmtP(s.yearLow)} | 현재위치: ${s.position52w}%
 50일선: ${s.fmtP(s.priceAvg50)} | 200일선: ${s.fmtP(s.priceAvg200)}
 배열: ${s.bullAlignment===null?"N/A":s.bullAlignment?"50일>200일(강세)":"50일<200일(약세)"}
-
 [가치] PER:${s.per??'N/A'} | PBR:${s.pbr??'N/A'} | PSR:${s.psr??'N/A'} | EV/EBITDA:${s.evEbitda??'N/A'} | 배당:${s.dividendYield??'0'}%
 [성장] 매출성장:${s.revenueGrowth??'N/A'}% | 영업이익률:${s.operatingMargin??'N/A'}% | EPS성장:${s.epsGrowth??'N/A'}% | ROE:${s.roe??'N/A'}% | ROA:${s.roa??'N/A'}%
 [재무] 부채비율:${s.debtEquity??'N/A'} | 유동비율:${s.currentRatio??'N/A'} | FCF:${s.fcf??'N/A'}
-
 priceTargets 가격은 ${s.currency} 숫자만.`;
 
     const cr = await fetch("https://api.anthropic.com/v1/messages", {
