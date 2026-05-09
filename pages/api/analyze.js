@@ -13,14 +13,43 @@ const SYSTEM_PROMPT = `당신은 기관급 주식 분석 AI입니다. 제공된 
 JSON만 반환:
 {"stockInfo":{"name":"","ticker":"","market":"","sector":"","currentPrice":"","currency":"","marketCap":""},"scores":{"total":0,"objective":0,"industry":0,"breakdown":{"value":0,"growth":0,"financial":0,"momentum":0},"industryBreakdown":{"trend":0,"competitive":0,"issues":0},"grade":"B","rationale":"3~5문장 강점약점업계영향"},"indicators":{"value":[{"name":"PER","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"PBR","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"PSR","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"EV/EBITDA","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""}],"growth":[{"name":"매출 성장률(YoY)","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"영업이익률","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"EPS 성장률","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"ROE","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""}],"financial":[{"name":"부채비율","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"유동비율","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"이자보상배율","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"FCF","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""}],"momentum":[{"name":"RSI(14일)","value":"","benchmark":"40~65","score":0,"status":"good|neutral|bad","comment":""},{"name":"52주 위치","value":"","benchmark":"30~70%","score":0,"status":"good|neutral|bad","comment":""},{"name":"이평선 정배열","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"골든/데드크로스","value":"","benchmark":"","score":0,"status":"good|neutral|bad","comment":""},{"name":"20일선 위치","value":"","benchmark":"0~5%","score":0,"status":"good|neutral|bad","comment":""}]},"industryAnalysis":{"trendScore":0,"competitiveScore":0,"issueScore":0,"trendSummary":"","competitiveSummary":"","issues":[{"type":"positive|negative|neutral","title":"","description":""}]},"priceTargets":{"currentPrice":"숫자만","currency":"USD|KRW","buyZoneLow":"숫자만","buyZoneHigh":"숫자만","targetPrice":"숫자만","stopLoss":"숫자만","upside":"숫자만","basis":"1~2문장"},"precautions":[{"level":"high|medium|low","title":"","description":""}],"outlook":"2~3문장"}`;
 
+const KR_STOCKS = {
+  "삼성전자":"005930.KS","sk하이닉스":"000660.KS","hynix":"000660.KS",
+  "lg에너지솔루션":"373220.KS","삼성바이오로직스":"207940.KS",
+  "현대차":"005380.KS","현대자동차":"005380.KS","기아":"000270.KS",
+  "포스코홀딩스":"005490.KS","posco":"005490.KS",
+  "삼성sdi":"006400.KS","lg화학":"051910.KS","카카오":"035720.KS",
+  "네이버":"035420.KS","셀트리온":"068270.KS","kb금융":"105560.KS",
+  "신한지주":"055550.KS","하나금융지주":"086790.KS","우리금융":"316140.KS",
+  "삼성물산":"028260.KS","lg전자":"066570.KS","sk이노베이션":"096770.KS",
+  "현대모비스":"012330.KS","삼성생명":"032830.KS","sk텔레콤":"017670.KS",
+  "kt":"030200.KS","롯데케미칼":"011170.KS","한국전력":"015760.KS",
+  "두산에너빌리티":"034020.KS","고려아연":"010130.KS","크래프톤":"259960.KS",
+  "카카오뱅크":"323410.KS","카카오페이":"377300.KS","하이브":"352820.KS",
+  "엔씨소프트":"036570.KS","넷마블":"251270.KS","펄어비스":"263750.KS",
+  "에코프로비엠":"247540.KS","에코프로":"086520.KS","포스코퓨처엠":"003670.KS",
+  "lg이노텍":"011070.KS","삼성전기":"009150.KS","삼성에스디에스":"018260.KS",
+};
+
 async function resolveTicker(query, apiKey) {
   const q = query.trim();
-  if (/^[A-Z0-9.]{1,12}$/.test(q.toUpperCase())) return q.toUpperCase();
+
+  // 숫자 6자리 → 한국 코드
   if (/^\d{6}$/.test(q)) return q + ".KS";
+
+  // 영문 티커 형태
+  if (/^[A-Z0-9.]{1,12}$/.test(q.toUpperCase())) return q.toUpperCase();
+
+  // 한국 종목명 매핑
+  const mapped = KR_STOCKS[q.toLowerCase().replace(/\s/g,"")];
+  if (mapped) return mapped;
+
+  // FMP 검색 (영문 검색도 시도)
   const res  = await fetch(`${FMP}/search?query=${encodeURIComponent(q)}&limit=5&apikey=${apiKey}`);
   const data = await res.json();
-  if (!data?.length) throw new Error(`"${q}" 종목을 찾을 수 없습니다.`);
-  return data[0].symbol;
+  if (data?.length) return data[0].symbol;
+
+  throw new Error(`"${q}" 종목을 찾을 수 없습니다. 티커를 직접 입력해보세요. (예: 005930.KS)`);
 }
 
 async function fetchFMPData(ticker, apiKey) {
@@ -31,6 +60,14 @@ async function fetchFMPData(ticker, apiKey) {
     fetch(`${FMP}/key-metrics-ttm/${ticker}?apikey=${apiKey}`).then(r=>r.json()).catch(()=>[]),
     fetch(`${FMP}/income-statement/${ticker}?limit=2&apikey=${apiKey}`).then(r=>r.json()).catch(()=>[]),
   ]);
+
+  // FMP API 키 오류 감지
+  if (quotes?.["Error Message"] || quotes?.error) {
+    throw new Error(`FMP API 오류: ${quotes["Error Message"] || quotes.error}`);
+  }
+  if (!Array.isArray(quotes) || quotes.length === 0) {
+    throw new Error(`${ticker} 데이터가 없습니다. FMP API 키를 확인해주세요.`);
+  }
 
   const q=quotes?.[0]||{}, p=profiles?.[0]||{}, ra=ratios?.[0]||{}, m=metrics?.[0]||{}, i0=income?.[0]||{}, i1=income?.[1]||{};
   const revGrowth = i0.revenue && i1.revenue ? (((i0.revenue-i1.revenue)/Math.abs(i1.revenue))*100).toFixed(1) : null;
@@ -76,7 +113,6 @@ export default async function handler(req, res) {
   try {
     const ticker    = await resolveTicker(query, process.env.FMP_API_KEY);
     const stockData = await fetchFMPData(ticker, process.env.FMP_API_KEY);
-    if (!stockData.currentPrice) throw new Error(`${ticker} 데이터를 가져올 수 없습니다. FMP 무료 한도(250회/일)를 초과했을 수 있습니다.`);
 
     const prompt = `다음 실제 재무 데이터를 기반으로 분석:
 종목: ${stockData.name} (${stockData.ticker}) / ${stockData.exchange} / ${stockData.sector}
