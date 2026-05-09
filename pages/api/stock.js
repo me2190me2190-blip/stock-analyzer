@@ -28,7 +28,16 @@ async function fetchChart(ticker) {
   const r = await fetch(url, { headers:{"User-Agent":UA,"Accept":"application/json"} });
   const json = await r.json();
   if (json.chart?.error) return null;
-  return json.chart?.result?.[0] || null;
+  const result = json.chart?.result?.[0];
+  if (!result) return null;
+
+  const meta = result.meta || {};
+  // 실제 종가 시계열에서 마지막 값 사용 (meta.regularMarketPrice보다 정확)
+  const closes = result.indicators?.quote?.[0]?.close || [];
+  const lastClose = [...closes].reverse().find(v => v != null);
+  const price = lastClose || meta.regularMarketPrice || meta.chartPreviousClose;
+
+  return { ...meta, reliablePrice: price };
 }
 
 // v10/quoteSummary - 재무지표용 (crumb 없이 시도)
@@ -59,14 +68,14 @@ async function fetchStockData(ticker) {
   let chart = await fetchChart(ticker);
 
   // 실패 시 반대 시장 시도
-  if (!chart?.meta?.regularMarketPrice) {
+  if (!chart?.reliablePrice) {
     const alt = ticker.endsWith(".KS") ? ticker.replace(".KS",".KQ") : ticker.replace(".KQ",".KS");
     const altChart = await fetchChart(alt);
-    if (altChart?.meta?.regularMarketPrice) { chart = altChart; ticker = alt; }
+    if (altChart?.reliablePrice) { chart = altChart; ticker = alt; }
   }
-  if (!chart?.meta?.regularMarketPrice) throw new Error(`${ticker} 데이터를 가져올 수 없습니다.`);
+  if (!chart?.reliablePrice) throw new Error(`${ticker} 데이터를 가져올 수 없습니다.`);
 
-  const meta   = chart.meta;
+  const meta   = chart;
   const v10    = await fetchSummary(ticker);
   const sd     = v10?.summaryDetail || {};
   const fd     = v10?.financialData || {};
@@ -75,7 +84,7 @@ async function fetchStockData(ticker) {
   const is0    = v10?.incomeStatementHistory?.incomeStatementHistory?.[0] || {};
   const is1    = v10?.incomeStatementHistory?.incomeStatementHistory?.[1] || {};
 
-  const cur    = meta.regularMarketPrice;
+  const cur    = chart.reliablePrice;
   const hi52   = meta.fiftyTwoWeekHigh;
   const lo52   = meta.fiftyTwoWeekLow;
   const ma50   = meta.fiftyDayAverage;

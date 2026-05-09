@@ -104,8 +104,9 @@ export default function StockAnalyzer() {
           </div>
           {stockData && (
             <button onClick={addFav}
-              style={{padding:"13px 16px",background:favorites.some(f=>f.query===info.ticker)?T.warnBg:T.accentBg,border:`1px solid ${favorites.some(f=>f.query===info.ticker)?T.warnBdr:T.accentBorder}`,borderRadius:9,color:favorites.some(f=>f.query===info.ticker)?T.warn:T.accent,fontWeight:700,fontSize:13,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap",cursor:"pointer"}}>
-              {favorites.some(f=>f.query===info.ticker)?"⭐":"☆"}
+              style={{padding:"13px 18px",background:favorites.some(f=>f.query===info.ticker)?T.warnBg:T.accentBg,border:`2px solid ${favorites.some(f=>f.query===info.ticker)?T.warnBdr:T.accentBorder}`,borderRadius:9,color:favorites.some(f=>f.query===info.ticker)?T.warn:T.accent,fontWeight:700,fontSize:13,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap",cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+              <span style={{fontSize:16}}>{favorites.some(f=>f.query===info.ticker)?"⭐":"☆"}</span>
+              <span>{favorites.some(f=>f.query===info.ticker)?"저장됨":"저장"}</span>
             </button>
           )}
           <button onClick={analyze} disabled={loading} style={{padding:"13px 24px",background:loading?T.neuBg:T.accent,border:"none",borderRadius:9,color:loading?T.textFaint:"#fff",fontWeight:700,fontSize:13,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap",boxShadow:loading?"none":`0 2px 8px ${T.accent}40`}}>
