@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const L={bg:"#F0F5FF",card:"#FFF",cardBorder:"#E0E8F5",shadow:"0 2px 8px rgba(37,99,235,.07),0 1px 3px rgba(0,0,0,.05)",accent:"#2563EB",accentBg:"#EFF6FF",accentBorder:"#BFDBFE",text:"#0F172A",textSub:"#475569",textFaint:"#94A3B8",mono:"#1D4ED8",track:"#E2E8F0",inputBg:"#F8FAFC",inputBorder:"#CBD5E1",tableHead:"#F1F5F9",divider:"#EEF2FA",pos:"#059669",posBg:"#ECFDF5",posBdr:"#A7F3D0",neg:"#DC2626",negBg:"#FEF2F2",negBdr:"#FECACA",warn:"#D97706",warnBg:"#FFFBEB",warnBdr:"#FDE68A",neu:"#64748B",neuBg:"#F1F5F9",neuBdr:"#CBD5E1"};
 const D={bg:"#07090E",card:"#0D1219",cardBorder:"#1A2535",shadow:"none",accent:"#38BDF8",accentBg:"#051219",accentBorder:"#0C2A3C",text:"#F1F5F9",textSub:"#A8B5C5",textFaint:"#6B7280",mono:"#38BDF8",track:"#1A2535",inputBg:"#0D1219",inputBorder:"#1A2535",tableHead:"#060A10",divider:"#1A2535",pos:"#34D399",posBg:"#022C22",posBdr:"#064E3B",neg:"#F87171",negBg:"#1C0404",negBdr:"#7F1D1D",warn:"#FBBF24",warnBg:"#1C1000",warnBdr:"#92400E",neu:"#94A3B8",neuBg:"#111827",neuBdr:"#1F2937"};
@@ -16,11 +16,35 @@ function PCard({level,title,description,T}){const m={high:{i:"⚠",c:T.neg,bg:T.
 export default function StockAnalyzer() {
   const [dark,      setDark]     = useState(false);
   const [query,     setQuery]    = useState("");
-  const [phase,     setPhase]    = useState(""); // "stock" | "ai" | ""
-  const [stockData, setStockData]= useState(null); // 1단계: 주식 데이터
-  const [result,    setResult]   = useState(null); // 2단계: AI 분석
+  const [phase,     setPhase]    = useState("");
+  const [stockData, setStockData]= useState(null);
+  const [result,    setResult]   = useState(null);
   const [error,     setError]    = useState(null);
   const [tab,       setTab]      = useState("indicators");
+  const [favorites, setFavorites]= useState([]);
+
+  useEffect(() => {
+    try { setFavorites(JSON.parse(localStorage.getItem("stock_favorites")||"[]")); } catch {}
+  }, []);
+
+  const addFav = () => {
+    if (!stockData) return;
+    const item = { name: stockData.name, query: stockData.ticker };
+    setFavorites(prev => {
+      if (prev.some(f=>f.query===item.query)) return prev;
+      const next = [...prev, item];
+      localStorage.setItem("stock_favorites", JSON.stringify(next));
+      return next;
+    });
+  };
+  const removeFav = (q) => {
+    setFavorites(prev => {
+      const next = prev.filter(f=>f.query!==q);
+      localStorage.setItem("stock_favorites", JSON.stringify(next));
+      return next;
+    });
+  };
+  const runFav = (q) => { setQuery(q); };
   const T = dark ? D : L;
   const card = (e={}) => ({background:T.card,border:`1px solid ${T.cardBorder}`,borderRadius:12,padding:20,boxShadow:T.shadow,...e});
 
@@ -82,6 +106,21 @@ export default function StockAnalyzer() {
           </button>
         </div>
 
+        {/* 즐겨찾기 바 */}
+        {favorites.length > 0 && (
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16,marginTop:-12}}>
+            <span style={{fontSize:10,color:T.textFaint,alignSelf:"center",marginRight:2}}>⭐</span>
+            {favorites.map(f=>(
+              <div key={f.query} style={{display:"flex",alignItems:"center",gap:4,background:T.accentBg,border:`1px solid ${T.accentBorder}`,borderRadius:20,padding:"4px 10px 4px 12px",cursor:"pointer"}}
+                onClick={()=>runFav(f.query)}>
+                <span style={{fontSize:12,color:T.accent,fontWeight:500}}>{f.name.length>10?f.name.slice(0,10)+"…":f.name}</span>
+                <button onClick={e=>{e.stopPropagation();removeFav(f.query);}}
+                  style={{background:"none",border:"none",color:T.textFaint,fontSize:14,lineHeight:1,padding:"0 2px",cursor:"pointer",fontFamily:"inherit"}}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {phase==="stock"&&<div style={{...card(),padding:"28px 24px",textAlign:"center"}}><div style={{width:36,height:36,border:`3px solid ${T.accentBorder}`,borderTopColor:T.accent,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}/><div style={{fontSize:14,fontWeight:700,color:T.accent}}>주식 데이터 수집 중...</div></div>}
 
         {/* 1단계 완료: 주식 정보 카드 즉시 표시 */}
@@ -97,9 +136,13 @@ export default function StockAnalyzer() {
               </div>
               <div style={{fontSize:28,fontWeight:800,fontFamily:"'IBM Plex Mono',monospace",color:T.accent,marginBottom:3}}>{info.currentPriceFmt}</div>
               <div style={{fontSize:11,color:T.textSub,marginBottom:10}}>시가총액 · {fmtCap(info.marketCap)}</div>
-              <div style={{display:"flex",gap:16}}>
+              <div style={{display:"flex",gap:16,alignItems:"center"}}>
                 <div style={{fontSize:10,color:T.textFaint}}>52주 고 <span style={{color:T.neg,fontWeight:600}}>{info.yearHighFmt}</span></div>
                 <div style={{fontSize:10,color:T.textFaint}}>52주 저 <span style={{color:T.pos,fontWeight:600}}>{info.yearLowFmt}</span></div>
+                <button onClick={addFav}
+                  style={{marginLeft:"auto",fontSize:10,color:favorites.some(f=>f.query===info.ticker)?T.warn:T.textFaint,background:"none",border:`1px solid ${T.cardBorder}`,borderRadius:6,padding:"3px 10px",cursor:"pointer",fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap"}}>
+                  {favorites.some(f=>f.query===info.ticker)?"⭐ 저장됨":"☆ 즐겨찾기"}
+                </button>
               </div>
             </div>
             {/* 2단계 로딩 중이면 AI 분석 대기 표시 */}
