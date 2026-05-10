@@ -124,16 +124,28 @@ async function fetchYahooChart(ticker) {
 /* ── 티커 해석 ── */
 function resolveTicker(query) {
   const q = query.trim();
-  // 미국 주식 (영문+숫자)
-  if (/^[A-Z]{1,5}$/.test(q.toUpperCase())) return { type:"US", ticker: q.toUpperCase() };
-  // 6자리 숫자
-  if (/^\d{6}$/.test(q)) return { type:"KR", code: q };
-  // 한국 종목명
-  const code = KR_STOCKS[q.toLowerCase().replace(/\s/g,"")];
-  if (code) return { type:"KR", code };
+
+  // 6자리 숫자 → 한국 종목
+  if (/^\d{6}$/.test(q)) {
+    return { type:"KR", code: q };
+  }
+
   // .KS/.KQ 형식
   const m = q.toUpperCase().match(/^(\d{6})\.(KS|KQ)$/);
   if (m) return { type:"KR", code: m[1] };
+
+  // 한국 종목명 매핑
+  const mapped = KR_STOCKS[q.toLowerCase().replace(/\s/g,"")];
+  if (mapped) {
+    const code = mapped.replace(/\.(KS|KQ)$/, "");
+    return { type:"KR", code };
+  }
+
+  // 미국 주식 (영문 티커)
+  if (/^[A-Z]{1,5}$/.test(q.toUpperCase())) {
+    return { type:"US", ticker: q.toUpperCase() };
+  }
+
   throw new Error(`"${q}" 종목을 찾을 수 없습니다. (예: 삼성전자, 005930, AAPL)`);
 }
 
@@ -147,15 +159,29 @@ async function fetchKRStockData(code) {
   ]);
   if (!quote || !quote.stck_prpr) throw new Error(`${code} 데이터를 가져올 수 없습니다.`);
 
-  const cur    = parseInt(quote.stck_prpr);
-  const hi52   = parseInt(quote.w52_hgpr);
-  const lo52   = parseInt(quote.w52_lwpr);
-  const { ma50, ma200 } = mas;
+  const hi52 = parseInt(quote.w52_hgpr);
+  const lo52 = parseInt(quote.w52_lwpr);
+
+  // KIS 일봉 closes는 천원(千원) 단위로 반환 → 원 단위로 보정
+  const rawClose = mas.closes?.[0] || 0;
+  const rawPrice = parseInt(quote.stck_prpr) || 0;
+  const unitFactor = (lo52 > 0 && rawClose > 0 && lo52 / rawClose > 100) ? 1000 : 1;
+  const cur = (rawClose || rawPrice) * unitFactor;
+  if (!cur) throw new Error(`${code} 현재가를 가져올 수 없습니다.`);
+
+  // 이동평균도 보정
+  const ma50  = mas.ma50  ? mas.ma50  * unitFactor : null;
+  const ma200 = mas.ma200 ? mas.ma200 * unitFactor : null;
+
   const pos52w = hi52&&lo52&&cur ? (((cur-lo52)/(hi52-lo52))*100).toFixed(1) : null;
-  const mktCap = parseInt(quote.hts_avls) * 1e8; // 억원 → 원
+  const mktCap = parseInt(quote.hts_avls) * 1e8;
 
   const fmtKRW = v => v ? `₩${Math.round(v).toLocaleString()}` : "N/A";
   const fmtCap = v => v ? `${(v/1e12).toFixed(1)}조원` : "-";
+
+  // null-safe 파싱 (0도 null 처리)
+  const safeFloat = (v, min=0.001) => { const n = parseFloat(v); return n > min ? n : null; };
+  const safeInt   = (v)            => { const n = parseInt(v);   return n > 0 ? n : null; };
 
   return {
     type: "KR", ticker: `${code}.KS`, currency: "KRW", isKRW: true,
@@ -171,16 +197,14 @@ async function fetchKRStockData(code) {
     priceAvg50: ma50, priceAvg200: ma200,
     position52w: pos52w,
     bullAlignment: ma50&&ma200 ? ma50>ma200 : null,
-    // KIS 공식 지표
-    per:             parseFloat(quote.per)     || null,
-    pbr:             parseFloat(quote.pbr)     || null,
-    eps:             parseInt(quote.eps)       || null,
-    bps:             parseInt(quote.bps)       || null,
-    roe:             parseFloat(quote.roe_val) || null,
-    dividendYield:   parseFloat(quote.dvdn_yied_val) || null,
-    // 재무지표 (Claude 추정)
+    per:           safeFloat(quote.per),
+    pbr:           safeFloat(quote.pbr),
+    eps:           safeInt(quote.eps),
+    bps:           safeInt(quote.bps),
+    roe:           safeFloat(quote.roe_val),
+    dividendYield: safeFloat(quote.dvdn_yied_val),
     revenueGrowth: null, operatingMargin: null,
-    epsGrowth: null, roe: null, roa: null,
+    epsGrowth: null, roa: null,
     debtEquity: null, currentRatio: null, fcf: null,
     recentNews: news,
   };

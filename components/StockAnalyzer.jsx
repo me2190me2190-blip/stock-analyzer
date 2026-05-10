@@ -84,7 +84,7 @@ export default function StockAnalyzer() {
 
         <div style={{display:"flex",alignItems:"center",gap:12,paddingBottom:18,marginBottom:22,borderBottom:`1px solid ${T.cardBorder}`}}>
           <div style={{width:32,height:32,background:T.accent,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,color:"#fff",fontWeight:800}}>◈</div>
-          <div><h1 style={{fontSize:18,fontWeight:700,letterSpacing:-.3}}>주식 분석기</h1><p style={{fontSize:10,color:T.textFaint,marginTop:1}}>Yahoo Finance · Claude AI · 미국 & 한국 주식</p></div>
+          <div><h1 style={{fontSize:18,fontWeight:700,letterSpacing:-.3}}>주식 분석기</h1><p style={{fontSize:10,color:T.textFaint,marginTop:1}}>KIS 실시간 데이터 · Claude AI · 미국 & 한국 주식</p></div>
           <div style={{marginLeft:"auto",display:"flex",background:T.neuBg,border:`1px solid ${T.neuBdr}`,borderRadius:7,padding:2,gap:2}}>
             {[{v:false,i:"☀️",l:"라이트"},{v:true,i:"🌙",l:"다크"}].map(o=>(
               <button key={o.l} onClick={()=>setDark(o.v)} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:5,fontSize:11,fontWeight:600,fontFamily:"'Sora',sans-serif",border:"none",background:dark===o.v?T.card:T.neuBg,color:dark===o.v?T.text:T.textFaint,boxShadow:dark===o.v?"0 1px 3px rgba(0,0,0,.1)":"none",transition:"all .2s"}}>
@@ -201,7 +201,7 @@ export default function StockAnalyzer() {
               <p style={{fontSize:13,color:T.text,lineHeight:1.8}}>{s.rationale}</p>
             </div>
 
-            <div className="fade-4" style={{...card(),marginBottom:12}}><span style={{fontSize:9,color:T.warn,letterSpacing:2,fontWeight:700}}>가격 목표</span>{pt.basis&&<span style={{marginLeft:"auto",fontSize:10,color:T.textFaint,maxWidth:360,textAlign:"right"}}>{pt.basis}</span>}</div>
+            <div className="fade-4" style={{...card(),marginBottom:12}}><div style={{display:"flex",alignItems:"flex-start",gap:7,marginBottom:16}}><div style={{width:3,height:14,background:T.warn,borderRadius:2,marginTop:2,flexShrink:0}}/><span style={{fontSize:9,color:T.warn,letterSpacing:2,fontWeight:700,flexShrink:0}}>가격 목표</span>{pt.basis&&<span style={{marginLeft:"auto",fontSize:10,color:T.textFaint,maxWidth:320,textAlign:"right",lineHeight:1.6}}>{pt.basis}</span>}</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))",gap:8,marginBottom:20}}>
                 {[{label:"손절가",v:sl,c:T.neg,bg:T.negBg,b:T.negBdr,i:"▼",sub:null},{label:"매수존",v:null,c:T.pos,bg:T.posBg,b:T.posBdr,i:"◎",sub:`${fmt(bL)}~${fmt(bH)}`},{label:"현재가",v:cur,c:T.accent,bg:T.accentBg,b:T.accentBorder,i:"◆",sub:null},{label:"목표주가",v:tgt,c:T.warn,bg:T.warnBg,b:T.warnBdr,i:"▲",sub:pt.upside?`+${pt.upside}%`:null}].map(b=>(
                   <div key={b.label} style={{background:b.bg,border:`1px solid ${b.b}`,borderRadius:9,padding:"11px 12px",textAlign:"center"}}>
