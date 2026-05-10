@@ -43,16 +43,26 @@ export default async function handler(req, res) {
   const isKRW = s.currency==="KRW";
   const fmtP = v => v?(isKRW?`₩${Math.round(v).toLocaleString()}`:`$${parseFloat(v).toFixed(2)}`):"N/A";
 
-  const prompt = `다음 실제 재무 데이터를 기반으로 분석:
+  const newsText = s.recentNews?.length
+    ? s.recentNews.map(n=>`- [${n.time}] ${n.title} (${n.publisher})`).join("\n")
+    : "최근 뉴스 없음";
+
+  const dataSource = s.type==="KR" ? "KIS 공식 API (한국투자증권)" : "Yahoo Finance";
+
+  const prompt = `다음 실제 재무 데이터(출처: ${dataSource})를 기반으로 분석:
 종목: ${s.name} (${s.ticker}) / ${s.exchange} / ${s.sector}
 현재가: ${s.currentPriceFmt} ${s.currency} | 시총: ${s.marketCapFmt}
 52주 고: ${fmtP(s.yearHigh)} | 저: ${fmtP(s.yearLow)} | 현재위치: ${s.position52w}%
 50일선: ${fmtP(s.priceAvg50)} | 200일선: ${fmtP(s.priceAvg200)}
 배열: ${s.bullAlignment===null?"N/A":s.bullAlignment?"50일>200일(강세)":"50일<200일(약세)"}
-[가치] PER:${s.per??'N/A'} | PBR:${s.pbr??'N/A'} | PSR:${s.psr??'N/A'} | EV/EBITDA:${s.evEbitda??'N/A'} | 배당:${s.dividendYield??'0'}%
-[성장] 매출성장:${s.revenueGrowth??'N/A'}% | 영업이익률:${s.operatingMargin??'N/A'}% | EPS성장:${s.epsGrowth??'N/A'}% | ROE:${s.roe??'N/A'}% | ROA:${s.roa??'N/A'}%
-[재무] 부채비율:${s.debtEquity??'N/A'} | 유동비율:${s.currentRatio??'N/A'} | FCF:${s.fcf??'N/A'}
-priceTargets 가격은 ${s.currency} 숫자만 (현재가 참고: ${s.currentPrice}).`;
+
+[공식 지표] PER:${s.per??'N/A'} | PBR:${s.pbr??'N/A'} | EPS:${s.eps??'N/A'} | BPS:${s.bps??'N/A'} | ROE:${s.roe??'N/A'}% | 배당수익률:${s.dividendYield??'N/A'}%
+[추정 지표] 매출성장·영업이익률·부채비율·유동비율·FCF는 학습 데이터 기반 추정값 사용
+
+최근 뉴스 (업계이슈 점수에 반드시 반영):
+${newsText}
+
+priceTargets 가격은 ${s.currency} 숫자만 (현재가: ${s.currentPrice}).`;`;`;
 
   try {
     const cr = await fetch("https://api.anthropic.com/v1/messages", {

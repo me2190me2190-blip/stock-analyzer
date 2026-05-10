@@ -1,145 +1,234 @@
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+const KIS_BASE = "https://openapi.koreainvestment.com:9443";
 
+/* ── KR 종목명 매핑 ── */
 const KR_STOCKS = {
-  "삼성전자":"005930.KS","sk하이닉스":"000660.KS","lg에너지솔루션":"373220.KS",
-  "삼성바이오로직스":"207940.KS","현대차":"005380.KS","현대자동차":"005380.KS",
-  "기아":"000270.KS","포스코홀딩스":"005490.KS","삼성sdi":"006400.KS",
-  "lg화학":"051910.KS","카카오":"035720.KS","네이버":"035420.KS",
-  "셀트리온":"068270.KS","kb금융":"105560.KS","신한지주":"055550.KS",
-  "하나금융지주":"086790.KS","삼성물산":"028260.KS","lg전자":"066570.KS",
-  "sk이노베이션":"096770.KS","현대모비스":"012330.KS","sk텔레콤":"017670.KS",
-  "한국전력":"015760.KS","크래프톤":"259960.KS","카카오뱅크":"323410.KS",
-  "하이브":"352820.KS","엔씨소프트":"036570.KS","에코프로비엠":"247540.KQ",
-  "에코프로":"086520.KQ","lg이노텍":"011070.KS","삼성전기":"009150.KS",
-  "엘앤에프":"066970.KQ","l&f":"066970.KQ","포스코퓨처엠":"003670.KS",
-  "두산에너빌리티":"034020.KS","고려아연":"010130.KS","카카오페이":"377300.KQ",
-  "넷마블":"251270.KQ","펄어비스":"263750.KQ","카카오게임즈":"293490.KQ",
-  "한미약품":"128940.KS","셀트리온헬스케어":"091990.KQ",
+  "삼성전자":"005930","sk하이닉스":"000660","lg에너지솔루션":"373220",
+  "삼성바이오로직스":"207940","현대차":"005380","현대자동차":"005380",
+  "기아":"000270","포스코홀딩스":"005490","삼성sdi":"006400",
+  "lg화학":"051910","카카오":"035720","네이버":"035420",
+  "셀트리온":"068270","kb금융":"105560","신한지주":"055550",
+  "하나금융지주":"086790","삼성물산":"028260","lg전자":"066570",
+  "sk이노베이션":"096770","현대모비스":"012330","sk텔레콤":"017670",
+  "한국전력":"015760","크래프톤":"259960","카카오뱅크":"323410",
+  "하이브":"352820","엔씨소프트":"036570","에코프로비엠":"247540",
+  "에코프로":"086520","lg이노텍":"011070","삼성전기":"009150",
+  "엘앤에프":"066970","l&f":"066970","포스코퓨처엠":"003670",
+  "두산에너빌리티":"034020","고려아연":"010130","카카오페이":"377300",
+  "넷마블":"251270","펄어비스":"263750","카카오게임즈":"293490",
+  "한미약품":"128940","셀트리온헬스케어":"091990",
 };
 
-const KOSDAQ_CODES = new Set([
-  "247540","086520","066970","377300","251270","263750","293490",
-  "091990","035420","035720","323410","352820","036570",
-]);
+/* ── KIS 토큰 캐시 ── */
+let _kisToken = null, _kisTokenExp = 0;
 
-// v8/chart - 가장 안정적, 인증 불필요
-async function fetchChart(ticker) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d&includePrePost=false`;
-  const r = await fetch(url, { headers:{"User-Agent":UA,"Accept":"application/json"} });
-  const json = await r.json();
-  if (json.chart?.error) return null;
-  const result = json.chart?.result?.[0];
-  if (!result) return null;
-
-  const meta = result.meta || {};
-  // 실제 종가 시계열에서 마지막 값 사용 (meta.regularMarketPrice보다 정확)
-  const closes = result.indicators?.quote?.[0]?.close || [];
-  const lastClose = [...closes].reverse().find(v => v != null);
-  const price = lastClose || meta.regularMarketPrice || meta.chartPreviousClose;
-
-  return { ...meta, reliablePrice: price };
+async function getKISToken() {
+  if (_kisToken && Date.now() < _kisTokenExp) return _kisToken;
+  const r = await fetch(`${KIS_BASE}/oauth2/tokenP`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      grant_type: "client_credentials",
+      appkey: process.env.KIS_APP_KEY,
+      appsecret: process.env.KIS_APP_SECRET,
+    }),
+  });
+  const d = await r.json();
+  if (!d.access_token) throw new Error("KIS 토큰 발급 실패");
+  _kisToken = d.access_token;
+  _kisTokenExp = Date.now() + (d.expires_in - 300) * 1000;
+  return _kisToken;
 }
 
-// v10/quoteSummary - 재무지표용 (crumb 없이 시도)
-async function fetchSummary(ticker) {
-  const modules = "summaryDetail,financialData,defaultKeyStatistics,incomeStatementHistory,assetProfile";
-  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=${modules}`;
+function kisHeaders(token, trId) {
+  return {
+    "Authorization": `Bearer ${token}`,
+    "appkey": process.env.KIS_APP_KEY,
+    "appsecret": process.env.KIS_APP_SECRET,
+    "tr_id": trId,
+    "custtype": "P",
+    "Content-Type": "application/json",
+  };
+}
+
+/* ── KIS 현재가 + 기본 지표 ── */
+async function fetchKISQuote(code, token) {
+  const params = new URLSearchParams({
+    FID_COND_MRKT_DIV_CODE: "J",
+    FID_INPUT_ISCD: code,
+  });
+  const r = await fetch(`${KIS_BASE}/uapi/domestic-stock/v1/quotations/inquire-price?${params}`, {
+    headers: kisHeaders(token, "FHKST01010100"),
+  });
+  const d = await r.json();
+  return d.output || null;
+}
+
+/* ── KIS 일봉 → MA50·MA200 계산 ── */
+async function fetchKISMAs(code, token) {
+  const now = new Date();
+  const end = now.toISOString().slice(0,10).replace(/-/g,"");
+  const start = new Date(now.setFullYear(now.getFullYear()-1)).toISOString().slice(0,10).replace(/-/g,"");
+  const params = new URLSearchParams({
+    FID_COND_MRKT_DIV_CODE: "J",
+    FID_INPUT_ISCD: code,
+    FID_INPUT_DATE_1: start,
+    FID_INPUT_DATE_2: end,
+    FID_PERIOD_DIV_CODE: "D",
+    FID_ORG_ADJ_PV: "0",
+  });
+  const r = await fetch(`${KIS_BASE}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?${params}`, {
+    headers: kisHeaders(token, "FHKST03010100"),
+  });
+  const d = await r.json();
+  const rows = d.output2 || []; // 최신→과거 순
+  const closes = rows.map(row => parseFloat(row.stck_clpr)).filter(v => !isNaN(v) && v > 0);
+  const avg = (arr, n) => arr.length >= n ? arr.slice(0,n).reduce((a,b)=>a+b,0)/n : null;
+  return { ma50: avg(closes,50), ma200: avg(closes,200), closes };
+}
+
+/* ── Yahoo Finance 뉴스 ── */
+async function fetchNews(query) {
   try {
-    const r = await fetch(url, { headers:{"User-Agent":UA,"Accept":"application/json"} });
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&newsCount=5&lang=ko-KR`;
+    const r = await fetch(url, { headers:{"User-Agent":UA} });
+    const d = await r.json();
+    return (d.news||[]).slice(0,5).map(n=>({
+      title: n.title,
+      publisher: n.publisher,
+      time: n.providerPublishTime ? new Date(n.providerPublishTime*1000).toLocaleDateString("ko-KR") : "",
+    }));
+  } catch { return []; }
+}
+
+/* ── Yahoo Finance v8/chart (미국 주식용) ── */
+async function fetchYahooChart(ticker) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1mo`;
+  try {
+    const r = await fetch(url, { headers:{"User-Agent":UA} });
     const json = await r.json();
-    if (json.quoteSummary?.error) return null;
-    return json.quoteSummary?.result?.[0] || null;
+    if (json.chart?.error) return null;
+    const result = json.chart?.result?.[0];
+    if (!result) return null;
+    const meta = result.meta || {};
+    const isKRW = meta.currency==="KRW";
+    const closes = (result.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null&&v>0);
+    const lastClose = closes[closes.length-1];
+    let price = isKRW
+      ? [meta.regularMarketPrice, meta.chartPreviousClose, lastClose].find(v=>v!=null&&v>=1000)
+      : (meta.regularMarketPrice || lastClose);
+    return { ...meta, reliablePrice: price };
   } catch { return null; }
 }
 
+/* ── 티커 해석 ── */
 function resolveTicker(query) {
   const q = query.trim();
+  // 미국 주식 (영문+숫자)
+  if (/^[A-Z]{1,5}$/.test(q.toUpperCase())) return { type:"US", ticker: q.toUpperCase() };
   // 6자리 숫자
-  if (/^\d{6}$/.test(q)) return KOSDAQ_CODES.has(q) ? q+".KQ" : q+".KS";
-  // 한국 종목명 매핑 먼저 (L&F, 삼성전자 등)
-  const mapped = KR_STOCKS[q.toLowerCase().replace(/\s/g,"")];
-  if (mapped) return mapped;
-  // 영문 티커
-  if (/^[A-Z0-9.-]{1,12}$/.test(q.toUpperCase()) && /[A-Z]/.test(q.toUpperCase())) return q.toUpperCase();
-  throw new Error(`"${q}" 종목을 찾을 수 없습니다. 코드를 직접 입력하세요. (예: AAPL, 005930, 066970)`);
+  if (/^\d{6}$/.test(q)) return { type:"KR", code: q };
+  // 한국 종목명
+  const code = KR_STOCKS[q.toLowerCase().replace(/\s/g,"")];
+  if (code) return { type:"KR", code };
+  // .KS/.KQ 형식
+  const m = q.toUpperCase().match(/^(\d{6})\.(KS|KQ)$/);
+  if (m) return { type:"KR", code: m[1] };
+  throw new Error(`"${q}" 종목을 찾을 수 없습니다. (예: 삼성전자, 005930, AAPL)`);
 }
 
-async function fetchStockData(ticker) {
-  let chart = await fetchChart(ticker);
+/* ── 한국 주식 데이터 조합 ── */
+async function fetchKRStockData(code) {
+  const token = await getKISToken();
+  const [quote, mas, news] = await Promise.all([
+    fetchKISQuote(code, token),
+    fetchKISMAs(code, token),
+    fetchNews(code),
+  ]);
+  if (!quote || !quote.stck_prpr) throw new Error(`${code} 데이터를 가져올 수 없습니다.`);
 
-  // 실패 시 반대 시장 시도
-  if (!chart?.reliablePrice) {
-    const alt = ticker.endsWith(".KS") ? ticker.replace(".KS",".KQ") : ticker.replace(".KQ",".KS");
-    const altChart = await fetchChart(alt);
-    if (altChart?.reliablePrice) { chart = altChart; ticker = alt; }
-  }
-  if (!chart?.reliablePrice) throw new Error(`${ticker} 데이터를 가져올 수 없습니다.`);
-
-  const meta   = chart;
-  const v10    = await fetchSummary(ticker);
-  const sd     = v10?.summaryDetail || {};
-  const fd     = v10?.financialData || {};
-  const ks     = v10?.defaultKeyStatistics || {};
-  const ap     = v10?.assetProfile || {};
-  const is0    = v10?.incomeStatementHistory?.incomeStatementHistory?.[0] || {};
-  const is1    = v10?.incomeStatementHistory?.incomeStatementHistory?.[1] || {};
-
-  const cur    = chart.reliablePrice;
-  const hi52   = meta.fiftyTwoWeekHigh;
-  const lo52   = meta.fiftyTwoWeekLow;
-  const ma50   = meta.fiftyDayAverage;
-  const ma200  = meta.twoHundredDayAverage;
+  const cur    = parseInt(quote.stck_prpr);
+  const hi52   = parseInt(quote.w52_hgpr);
+  const lo52   = parseInt(quote.w52_lwpr);
+  const { ma50, ma200 } = mas;
   const pos52w = hi52&&lo52&&cur ? (((cur-lo52)/(hi52-lo52))*100).toFixed(1) : null;
-  const rev0   = is0.totalRevenue?.raw, rev1 = is1.totalRevenue?.raw;
-  const revGrowth = rev0&&rev1 ? (((rev0-rev1)/Math.abs(rev1))*100).toFixed(1) : null;
+  const mktCap = parseInt(quote.hts_avls) * 1e8; // 억원 → 원
 
-  const currency = meta.currency || "USD";
-  const isKRW    = currency === "KRW";
-  const fmtP  = v => v ? (isKRW ? `₩${Math.round(v).toLocaleString()}` : `$${parseFloat(v).toFixed(2)}`) : "N/A";
-  const fmtCap = v => {
-    if (!v) return "-";
-    if (isKRW) return `${(v/1e12).toFixed(1)}조원`;
-    if (v>=1e12) return `$${(v/1e12).toFixed(2)}T`;
-    return `$${(v/1e9).toFixed(1)}B`;
-  };
+  const fmtKRW = v => v ? `₩${Math.round(v).toLocaleString()}` : "N/A";
+  const fmtCap = v => v ? `${(v/1e12).toFixed(1)}조원` : "-";
 
   return {
-    ticker, currency, isKRW,
-    name:            meta.longName || meta.shortName || ap.longBusinessSummary?.slice(0,30) || ticker,
-    exchange:        meta.exchangeName || "",
-    sector:          ap.sector || "",
+    type: "KR", ticker: `${code}.KS`, currency: "KRW", isKRW: true,
+    name:            quote.hts_kor_isnm || code,
+    exchange:        "KSE",
+    sector:          quote.bstp_kor_isnm || "",
     currentPrice:    cur,
-    currentPriceFmt: fmtP(cur),
-    marketCap:       meta.marketCap,
-    marketCapFmt:    fmtCap(meta.marketCap),
+    currentPriceFmt: fmtKRW(cur),
+    marketCap:       mktCap,
+    marketCapFmt:    fmtCap(mktCap),
     yearHigh: hi52, yearLow: lo52,
-    yearHighFmt: fmtP(hi52), yearLowFmt: fmtP(lo52),
+    yearHighFmt: fmtKRW(hi52), yearLowFmt: fmtKRW(lo52),
     priceAvg50: ma50, priceAvg200: ma200,
     position52w: pos52w,
     bullAlignment: ma50&&ma200 ? ma50>ma200 : null,
-    per:          sd.trailingPE?.raw ?? ks.forwardPE?.raw,
-    pbr:          ks.priceToBook?.raw,
-    psr:          ks.priceToSalesTrailing12Months?.raw,
-    evEbitda:     ks.enterpriseToEbitda?.raw,
-    dividendYield: sd.dividendYield?.raw!=null?(sd.dividendYield.raw*100).toFixed(2):null,
-    revenueGrowth: revGrowth??(fd.revenueGrowth?.raw!=null?(fd.revenueGrowth.raw*100).toFixed(1):null),
-    operatingMargin: fd.operatingMargins?.raw!=null?(fd.operatingMargins.raw*100).toFixed(1):null,
-    epsGrowth:    ks.earningsGrowth?.raw!=null?(ks.earningsGrowth.raw*100).toFixed(1):null,
-    roe:          fd.returnOnEquity?.raw!=null?(fd.returnOnEquity.raw*100).toFixed(1):null,
-    roa:          fd.returnOnAssets?.raw!=null?(fd.returnOnAssets.raw*100).toFixed(1):null,
-    debtEquity:   fd.debtToEquity?.raw,
-    currentRatio: fd.currentRatio?.raw,
-    fcf:          fd.freeCashflow?.raw,
+    // KIS 공식 지표
+    per:             parseFloat(quote.per)     || null,
+    pbr:             parseFloat(quote.pbr)     || null,
+    eps:             parseInt(quote.eps)       || null,
+    bps:             parseInt(quote.bps)       || null,
+    roe:             parseFloat(quote.roe_val) || null,
+    dividendYield:   parseFloat(quote.dvdn_yied_val) || null,
+    // 재무지표 (Claude 추정)
+    revenueGrowth: null, operatingMargin: null,
+    epsGrowth: null, roe: null, roa: null,
+    debtEquity: null, currentRatio: null, fcf: null,
+    recentNews: news,
   };
 }
 
+/* ── 미국 주식 데이터 ── */
+async function fetchUSStockData(ticker) {
+  const [chart, news] = await Promise.all([
+    fetchYahooChart(ticker),
+    fetchNews(ticker),
+  ]);
+  if (!chart?.reliablePrice) throw new Error(`${ticker} 데이터를 가져올 수 없습니다.`);
+
+  const cur = chart.reliablePrice;
+  const hi52=chart.fiftyTwoWeekHigh, lo52=chart.fiftyTwoWeekLow;
+  const ma50=chart.fiftyDayAverage, ma200=chart.twoHundredDayAverage;
+  const pos52w = hi52&&lo52&&cur ? (((cur-lo52)/(hi52-lo52))*100).toFixed(1) : null;
+  const fmtP = v => v ? `$${parseFloat(v).toFixed(2)}` : "N/A";
+  const fmtCap = v => !v?"-":v>=1e12?`$${(v/1e12).toFixed(2)}T`:`$${(v/1e9).toFixed(1)}B`;
+
+  return {
+    type:"US", ticker, currency:"USD", isKRW:false,
+    name: chart.longName||chart.shortName||ticker,
+    exchange: chart.exchangeName||"",
+    sector: chart.sector||"",
+    currentPrice: cur, currentPriceFmt: fmtP(cur),
+    marketCap: chart.marketCap, marketCapFmt: fmtCap(chart.marketCap),
+    yearHigh: hi52, yearLow: lo52, yearHighFmt: fmtP(hi52), yearLowFmt: fmtP(lo52),
+    priceAvg50: ma50, priceAvg200: ma200,
+    position52w: pos52w, bullAlignment: ma50&&ma200?ma50>ma200:null,
+    per: chart.trailingPE||null, pbr: null, eps: null, bps: null,
+    dividendYield: chart.dividendYield?(chart.dividendYield*100).toFixed(2):null,
+    revenueGrowth:null, operatingMargin:null, epsGrowth:null,
+    roe:null, roa:null, debtEquity:null, currentRatio:null, fcf:null,
+    recentNews: news,
+  };
+}
+
+/* ── 메인 핸들러 ── */
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   const { query } = req.body || {};
   if (!query?.trim()) return res.status(400).json({ error:"종목을 입력해주세요." });
   try {
-    const ticker = resolveTicker(query);
-    const data   = await fetchStockData(ticker);
+    const resolved = resolveTicker(query);
+    const data = resolved.type==="KR"
+      ? await fetchKRStockData(resolved.code)
+      : await fetchUSStockData(resolved.ticker);
     return res.status(200).json(data);
   } catch(e) {
     return res.status(500).json({ error: e.message });

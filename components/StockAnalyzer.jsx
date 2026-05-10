@@ -94,40 +94,36 @@ export default function StockAnalyzer() {
           </div>
         </div>
 
-        {/* 검색창 + 즐겨찾기 추가 버튼 */}
-        <div style={{display:"flex",gap:8,marginBottom:favorites.length>0?8:24}}>
+        {/* 즐겨찾기 목록 */}
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:11,color:T.textFaint,marginBottom:8,fontWeight:600}}>⭐ 즐겨찾기</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+            {favorites.length===0 && (
+              <span style={{fontSize:11,color:T.textFaint}}>분석 후 ☆ 버튼으로 저장하세요</span>
+            )}
+            {favorites.map(f=>(
+              <div key={f.query} style={{display:"flex",alignItems:"center",gap:3,background:T.accentBg,border:`1px solid ${T.accentBorder}`,borderRadius:20,padding:"5px 8px 5px 13px",cursor:"pointer"}}
+                onClick={()=>setQuery(f.query)}>
+                <span style={{fontSize:12,color:T.accent,fontWeight:600}}>{f.name.length>8?f.name.slice(0,8)+"…":f.name}</span>
+                <button onClick={e=>{e.stopPropagation();removeFav(f.query);}}
+                  style={{background:"none",border:"none",color:T.textFaint,fontSize:16,lineHeight:1,padding:"0 4px",cursor:"pointer"}}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 검색창 */}
+        <div style={{display:"flex",gap:8,marginBottom:24}}>
           <div style={{flex:1,position:"relative"}}>
             <input style={{width:"100%",padding:"13px 16px 13px 44px",background:T.inputBg,border:`1px solid ${T.inputBorder}`,borderRadius:9,color:T.text,fontSize:14,fontFamily:"'Sora',sans-serif",transition:"all .2s"}}
               placeholder="종목명 또는 티커  (예: 삼성전자, NVDA, 005930, AAPL)"
               value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&analyze()}/>
             <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:15,color:T.textFaint,pointerEvents:"none"}}>⌕</span>
           </div>
-          {stockData && (
-            <button onClick={addFav}
-              style={{padding:"13px 18px",background:favorites.some(f=>f.query===info.ticker)?T.warnBg:T.accentBg,border:`2px solid ${favorites.some(f=>f.query===info.ticker)?T.warnBdr:T.accentBorder}`,borderRadius:9,color:favorites.some(f=>f.query===info.ticker)?T.warn:T.accent,fontWeight:700,fontSize:13,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap",cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
-              <span style={{fontSize:16}}>{favorites.some(f=>f.query===info.ticker)?"⭐":"☆"}</span>
-              <span>{favorites.some(f=>f.query===info.ticker)?"저장됨":"저장"}</span>
-            </button>
-          )}
           <button onClick={analyze} disabled={loading} style={{padding:"13px 24px",background:loading?T.neuBg:T.accent,border:"none",borderRadius:9,color:loading?T.textFaint:"#fff",fontWeight:700,fontSize:13,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap",boxShadow:loading?"none":`0 2px 8px ${T.accent}40`}}>
             {loading?"분석 중…":"분석 →"}
           </button>
         </div>
-
-        {/* 즐겨찾기 바 */}
-        {favorites.length > 0 && (
-          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16,alignItems:"center"}}>
-            <span style={{fontSize:10,color:T.textFaint}}>즐겨찾기</span>
-            {favorites.map(f=>(
-              <div key={f.query} style={{display:"flex",alignItems:"center",gap:3,background:T.accentBg,border:`1px solid ${T.accentBorder}`,borderRadius:20,padding:"4px 8px 4px 12px",cursor:"pointer"}}
-                onClick={()=>{setQuery(f.query);}}>
-                <span style={{fontSize:12,color:T.accent,fontWeight:500}}>{f.name.length>8?f.name.slice(0,8)+"…":f.name}</span>
-                <button onClick={e=>{e.stopPropagation();removeFav(f.query);}}
-                  style={{background:"none",border:"none",color:T.textFaint,fontSize:15,lineHeight:1,padding:"0 3px",cursor:"pointer"}}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
 
         {phase==="stock"&&<div style={{...card(),padding:"28px 24px",textAlign:"center"}}><div style={{width:36,height:36,border:`3px solid ${T.accentBorder}`,borderTopColor:T.accent,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}/><div style={{fontSize:14,fontWeight:700,color:T.accent}}>주식 데이터 수집 중...</div></div>}
 
@@ -146,10 +142,15 @@ export default function StockAnalyzer() {
                 {info.currentPriceFmt || (info.currentPrice ? fmt(info.currentPrice) : "—")}
               </div>
               <div style={{fontSize:11,color:T.textSub,marginBottom:10}}>시가총액 · {fmtCap(info.marketCap)}</div>
-              <div style={{display:"flex",gap:16}}>
+              <div style={{display:"flex",gap:16,alignItems:"center",marginTop:4}}>
                 <div style={{fontSize:10,color:T.textFaint}}>52주 고 <span style={{color:T.neg,fontWeight:600}}>{info.yearHighFmt}</span></div>
                 <div style={{fontSize:10,color:T.textFaint}}>52주 저 <span style={{color:T.pos,fontWeight:600}}>{info.yearLowFmt}</span></div>
               </div>
+              <button onClick={addFav}
+                style={{marginTop:14,width:"100%",padding:"10px",borderRadius:8,border:`2px solid ${favorites.some(f=>f.query===info.ticker)?T.warnBdr:T.accentBorder}`,background:favorites.some(f=>f.query===info.ticker)?T.warnBg:T.accentBg,color:favorites.some(f=>f.query===info.ticker)?T.warn:T.accent,fontWeight:700,fontSize:13,fontFamily:"'Sora',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                <span style={{fontSize:16}}>{favorites.some(f=>f.query===info.ticker)?"⭐":"☆"}</span>
+                {favorites.some(f=>f.query===info.ticker)?"즐겨찾기 저장됨":"즐겨찾기에 추가"}
+              </button>
             </div>
             {/* 2단계 로딩 중이면 AI 분석 대기 표시 */}
             {phase==="ai" && (
@@ -185,7 +186,7 @@ export default function StockAnalyzer() {
           const pct=v=>`${Math.max(0,Math.min(100,((v-minP)/(maxP-minP))*100)).toFixed(1)}%`;
           return(<>
             <div className="fade-2" style={{...card(),marginBottom:12}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 36px"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:"16px 36px"}}>
                 <div><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:12}}>객관적 지표 (80점)</div>{CAT.map(c=><Bar key={c.key} label={c.label} score={bd[c.key]??0} max={c.max} color={c.color} T={T}/>)}</div>
                 <div><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:12}}>업계동향 & 이슈 (20점)</div>
                   <Bar label="업계 성장성/트렌드" score={ibd.trend??0} max={8} color={T.pos} T={T}/>
@@ -201,7 +202,7 @@ export default function StockAnalyzer() {
             </div>
 
             <div className="fade-4" style={{...card(),marginBottom:12}}><span style={{fontSize:9,color:T.warn,letterSpacing:2,fontWeight:700}}>가격 목표</span>{pt.basis&&<span style={{marginLeft:"auto",fontSize:10,color:T.textFaint,maxWidth:360,textAlign:"right"}}>{pt.basis}</span>}</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:20}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))",gap:8,marginBottom:20}}>
                 {[{label:"손절가",v:sl,c:T.neg,bg:T.negBg,b:T.negBdr,i:"▼",sub:null},{label:"매수존",v:null,c:T.pos,bg:T.posBg,b:T.posBdr,i:"◎",sub:`${fmt(bL)}~${fmt(bH)}`},{label:"현재가",v:cur,c:T.accent,bg:T.accentBg,b:T.accentBorder,i:"◆",sub:null},{label:"목표주가",v:tgt,c:T.warn,bg:T.warnBg,b:T.warnBdr,i:"▲",sub:pt.upside?`+${pt.upside}%`:null}].map(b=>(
                   <div key={b.label} style={{background:b.bg,border:`1px solid ${b.b}`,borderRadius:9,padding:"11px 12px",textAlign:"center"}}>
                     <div style={{fontSize:9,color:b.c,fontWeight:700,letterSpacing:1,marginBottom:5}}>{b.i} {b.label}</div>
@@ -233,7 +234,7 @@ export default function StockAnalyzer() {
 
             {tab==="indicators"&&<div className="fade-6" style={card()}>{IND.map(g=>(<div key={g.key} style={{marginBottom:24}}><div style={{display:"flex",alignItems:"center",gap:7,marginBottom:10}}><div style={{width:3,height:11,background:g.color,borderRadius:2}}/><span style={{fontSize:9,color:g.color,letterSpacing:2,fontWeight:700}}>{g.label.toUpperCase()}</span></div><div style={{display:"grid",gridTemplateColumns:"1.8fr 0.9fr 1.5fr 55px 65px",gap:7,padding:"6px 9px",background:T.tableHead,borderRadius:5,marginBottom:2}}>{["지표명","수치","벤치마크","점수","평가"].map(h=><span key={h} style={{fontSize:9,color:T.textFaint,fontWeight:600}}>{h}</span>)}</div>{r.indicators?.[g.key]?.map((ind,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1.8fr 0.9fr 1.5fr 55px 65px",gap:7,padding:"10px 9px",borderBottom:`1px solid ${T.divider}`,alignItems:"center"}}><div><div style={{fontSize:12,fontWeight:500}}>{ind.name}</div><div style={{fontSize:10,color:T.textFaint,marginTop:1}}>{ind.comment}</div></div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,fontWeight:700,color:ind.status==="good"?T.pos:ind.status==="bad"?T.neg:T.textSub}}>{ind.value}</div><div style={{fontSize:10,color:T.textFaint,lineHeight:1.4}}>{ind.benchmark}</div><Dots score={ind.score??0} max={5} T={T}/><Bdg status={ind.status} T={T}/></div>))}</div>))}</div>}
 
-            {tab==="industry"&&<div className="fade-6" style={card()}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>{[{label:"업계 성장성/트렌드",score:ibd.trend,max:8,text:r.industryAnalysis?.trendSummary},{label:"경쟁 포지션/해자",score:ibd.competitive,max:6,text:r.industryAnalysis?.competitiveSummary}].map(item=>(<div key={item.label} style={{background:T.posBg,border:`1px solid ${T.posBdr}`,borderRadius:9,padding:14}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:9}}><span style={{fontSize:9,color:T.pos,letterSpacing:1.5,fontWeight:700}}>{item.label}</span><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,color:T.pos}}>{item.score}<span style={{fontSize:10,color:T.textFaint}}>/{item.max}</span></span></div><p style={{fontSize:12,color:T.textSub,lineHeight:1.65,margin:0}}>{item.text}</p></div>))}</div><div style={{marginBottom:16}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:9,color:T.textFaint,letterSpacing:2,fontWeight:700}}>최근 주요 이슈</span><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700,color:T.warn}}>{ibd.issues}<span style={{fontSize:10,color:T.textFaint}}>/6</span></span></div>{r.industryAnalysis?.issues?.map((issue,i)=><ICard key={i} {...issue} T={T}/>)}</div><div style={{background:T.tableHead,border:`1px solid ${T.divider}`,borderRadius:9,padding:14}}><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:8,fontWeight:700}}>향후 전망 (3~6개월)</div><p style={{fontSize:12,color:T.textSub,lineHeight:1.7,margin:0}}>{r.outlook}</p></div></div>}
+            {tab==="industry"&&<div className="fade-6" style={card()}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:12,marginBottom:16}}>{[{label:"업계 성장성/트렌드",score:ibd.trend,max:8,text:r.industryAnalysis?.trendSummary},{label:"경쟁 포지션/해자",score:ibd.competitive,max:6,text:r.industryAnalysis?.competitiveSummary}].map(item=>(<div key={item.label} style={{background:T.posBg,border:`1px solid ${T.posBdr}`,borderRadius:9,padding:14}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:9}}><span style={{fontSize:9,color:T.pos,letterSpacing:1.5,fontWeight:700}}>{item.label}</span><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,color:T.pos}}>{item.score}<span style={{fontSize:10,color:T.textFaint}}>/{item.max}</span></span></div><p style={{fontSize:12,color:T.textSub,lineHeight:1.65,margin:0}}>{item.text}</p></div>))}</div><div style={{marginBottom:16}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:9,color:T.textFaint,letterSpacing:2,fontWeight:700}}>최근 주요 이슈</span><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700,color:T.warn}}>{ibd.issues}<span style={{fontSize:10,color:T.textFaint}}>/6</span></span></div>{r.industryAnalysis?.issues?.map((issue,i)=><ICard key={i} {...issue} T={T}/>)}</div><div style={{background:T.tableHead,border:`1px solid ${T.divider}`,borderRadius:9,padding:14}}><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:8,fontWeight:700}}>향후 전망 (3~6개월)</div><p style={{fontSize:12,color:T.textSub,lineHeight:1.7,margin:0}}>{r.outlook}</p></div></div>}
 
             {tab==="precautions"&&<div className="fade-6" style={card()}><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:14,fontWeight:700}}>투자 유의사항</div>{r.precautions?.map((p2,i)=><PCard key={i} {...p2} T={T}/>)}<div style={{marginTop:16,background:T.tableHead,borderRadius:7,padding:"11px 14px",fontSize:10,color:T.textFaint,textAlign:"center",lineHeight:1.8}}>※ 본 분석은 AI 참고 정보이며 투자 권유가 아닙니다.</div></div>}
           </>);
