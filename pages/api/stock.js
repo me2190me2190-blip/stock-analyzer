@@ -65,12 +65,12 @@ async function fetchKISQuote(code, token) {
 }
 
 /* ── KIS 일봉 → MA50·MA200 계산 ── */
-async function fetchKISMAs(code, token) {
+async function fetchKISMAs(code, token, mktCode="J") {
   const now = new Date();
   const end = now.toISOString().slice(0,10).replace(/-/g,"");
-  const start = new Date(now.setFullYear(now.getFullYear()-1)).toISOString().slice(0,10).replace(/-/g,"");
+  const start = new Date(now - 365*24*60*60*1000).toISOString().slice(0,10).replace(/-/g,"");
   const params = new URLSearchParams({
-    FID_COND_MRKT_DIV_CODE: "J",
+    FID_COND_MRKT_DIV_CODE: mktCode,
     FID_INPUT_ISCD: code,
     FID_INPUT_DATE_1: start,
     FID_INPUT_DATE_2: end,
@@ -81,13 +81,35 @@ async function fetchKISMAs(code, token) {
     headers: kisHeaders(token, "FHKST03010100"),
   });
   const d = await r.json();
-  const rows = d.output2 || []; // 최신→과거 순
+  const rows = d.output2 || [];
   const closes = rows.map(row => parseFloat(row.stck_clpr)).filter(v => !isNaN(v) && v > 0);
   const avg = (arr, n) => arr.length >= n ? arr.slice(0,n).reduce((a,b)=>a+b,0)/n : null;
   return { ma50: avg(closes,50), ma200: avg(closes,200), closes };
 }
 
-/* ── Yahoo Finance 뉴스 ── */
+/* ── KIS 재무비율 (ROE, 영업이익률 등) ── */
+async function fetchKISFinancial(code, token) {
+  try {
+    const params = new URLSearchParams({
+      FID_DIV_CLS_CODE: "0",
+      fid_cond_mrkt_div_code: "J",
+      fid_input_iscd: code,
+    });
+    const r = await fetch(`${KIS_BASE}/uapi/domestic-stock/v1/quotations/inquire-financial-ratiods?${params}`, {
+      headers: kisHeaders(token, "FHKST66430300"),
+    });
+    const d = await r.json();
+    const o = d.output || {};
+    return {
+      roe:            parseFloat(o.roe_val)   || null,
+      operatingMargin:parseFloat(o.bsop_prfr) || null,
+      debtEquity:     parseFloat(o.lblt_rate) || null,
+      currentRatio:   parseFloat(o.crnt_rate) || null,
+    };
+  } catch { return {}; }
+}
+
+
 async function fetchNews(query) {
   try {
     const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&newsCount=5&lang=ko-KR`;
@@ -152,12 +174,21 @@ function resolveTicker(query) {
 /* ── 한국 주식 데이터 조합 ── */
 async function fetchKRStockData(code) {
   const token = await getKISToken();
-  const [quote, mas, news] = await Promise.all([
-    fetchKISQuote(code, token),
-    fetchKISMAs(code, token),
-    fetchNews(code),
-  ]);
+  // 1단계: 종목 기본 정보 먼저
+  const quote = await fetchKISQuote(code, token);
   if (!quote || !quote.stck_prpr) throw new Error(`${code} 데이터를 가져올 수 없습니다.`);
+
+  const stockName = quote.hts_kor_isnm || code;
+
+  // 2단계: 일봉 + 뉴스 병렬 (종목명으로 뉴스 검색)
+  let mas = await fetchKISMAs(code, token, "J");
+  if (!mas.closes?.length) {
+    mas = await fetchKISMAs(code, token, "Q");
+  }
+  const [financial, news] = await Promise.all([
+    fetchKISFinancial(code, token),
+    fetchNews(stockName),
+  ]);
 
   const hi52 = parseInt(quote.w52_hgpr);
   const lo52 = parseInt(quote.w52_lwpr);
@@ -201,8 +232,11 @@ async function fetchKRStockData(code) {
     pbr:           safeFloat(quote.pbr),
     eps:           safeInt(quote.eps),
     bps:           safeInt(quote.bps),
-    roe:           safeFloat(quote.roe_val),
+    roe:           safeFloat(quote.roe_val) || financial.roe || null,
     dividendYield: safeFloat(quote.dvdn_yied_val),
+    operatingMargin: financial.operatingMargin || null,
+    debtEquity:    financial.debtEquity || null,
+    currentRatio:  financial.currentRatio || null,
     revenueGrowth: null, operatingMargin: null,
     epsGrowth: null, roa: null,
     debtEquity: null, currentRatio: null, fcf: null,

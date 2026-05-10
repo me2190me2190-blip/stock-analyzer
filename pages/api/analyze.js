@@ -64,7 +64,7 @@ export default async function handler(req, res) {
 배열: ${s.bullAlignment===null?"N/A":s.bullAlignment?"50일>200일(강세)":"50일<200일(약세)"}
 
 [API 제공 지표]
-PER: ${s.per ?? "데이터없음"} | PBR: ${s.pbr ?? "데이터없음"} | EPS: ${s.eps ?? "데이터없음"} | BPS: ${s.bps ?? "데이터없음"} | ROE: ${s.roe ?? "데이터없음"} | 배당: ${s.dividendYield ?? "데이터없음"}
+PER: ${s.per ?? "데이터없음"} | PBR: ${s.pbr ?? "데이터없음"} | EPS: ${s.eps ?? "데이터없음"} | BPS: ${s.bps ?? "데이터없음"} | ROE: ${s.roe ?? "데이터없음"} | 배당: ${s.dividendYield ?? "데이터없음"} | 영업이익률: ${s.operatingMargin ?? "데이터없음"} | 부채비율: ${s.debtEquity ?? "데이터없음"} | 유동비율: ${s.currentRatio ?? "데이터없음"}
 
 [API 미제공 → value:"N/A" status:"neutral" score:2 필수]
 PSR, EV/EBITDA, 매출성장률, 영업이익률, EPS성장률, 부채비율, 유동비율, 이자보상배율, FCF
@@ -72,7 +72,7 @@ PSR, EV/EBITDA, 매출성장률, 영업이익률, EPS성장률, 부채비율, �
 최근 뉴스 (업계이슈 점수 반영):
 ${newsText}
 
-priceTargets: ${s.currency} 숫자만, 현재가(${s.currentPrice})·PER(${s.per??'N/A'})·PBR(${s.pbr??'N/A'}) 기반으로만 산출.`;`;
+priceTargets: ${s.currency} 숫자만, 현재가(${s.currentPrice})·PER(${s.per??'N/A'})·PBR(${s.pbr??'N/A'}) 기반으로만 산출.`;
 
   try {
     const cr = await fetch("https://api.anthropic.com/v1/messages", {
