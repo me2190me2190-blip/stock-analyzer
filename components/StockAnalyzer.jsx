@@ -3,7 +3,22 @@ import { useState, useEffect } from "react";
 const L={bg:"#F0F5FF",card:"#FFF",cardBorder:"#E0E8F5",shadow:"0 2px 8px rgba(37,99,235,.07),0 1px 3px rgba(0,0,0,.05)",accent:"#2563EB",accentBg:"#EFF6FF",accentBorder:"#BFDBFE",text:"#0F172A",textSub:"#475569",textFaint:"#94A3B8",mono:"#1D4ED8",track:"#E2E8F0",inputBg:"#F8FAFC",inputBorder:"#CBD5E1",tableHead:"#F1F5F9",divider:"#EEF2FA",pos:"#059669",posBg:"#ECFDF5",posBdr:"#A7F3D0",neg:"#DC2626",negBg:"#FEF2F2",negBdr:"#FECACA",warn:"#D97706",warnBg:"#FFFBEB",warnBdr:"#FDE68A",neu:"#64748B",neuBg:"#F1F5F9",neuBdr:"#CBD5E1"};
 const D={bg:"#07090E",card:"#0D1219",cardBorder:"#1A2535",shadow:"none",accent:"#38BDF8",accentBg:"#051219",accentBorder:"#0C2A3C",text:"#F1F5F9",textSub:"#A8B5C5",textFaint:"#6B7280",mono:"#38BDF8",track:"#1A2535",inputBg:"#0D1219",inputBorder:"#1A2535",tableHead:"#060A10",divider:"#1A2535",pos:"#34D399",posBg:"#022C22",posBdr:"#064E3B",neg:"#F87171",negBg:"#1C0404",negBdr:"#7F1D1D",warn:"#FBBF24",warnBg:"#1C1000",warnBdr:"#92400E",neu:"#94A3B8",neuBg:"#111827",neuBdr:"#1F2937"};
 const GC={light:{S:{c:"#7C3AED",bg:"#F5F3FF",tx:"#4C1D95",bd:"#C4B5FD",d:"최우량"},A:{c:"#059669",bg:"#ECFDF5",tx:"#064E3B",bd:"#6EE7B7",d:"우량"},B:{c:"#D97706",bg:"#FFFBEB",tx:"#78350F",bd:"#FCD34D",d:"양호"},C:{c:"#EA580C",bg:"#FFF7ED",tx:"#7C2D12",bd:"#FDBA74",d:"보통"},D:{c:"#DC2626",bg:"#FEF2F2",tx:"#7F1D1D",bd:"#FCA5A5",d:"주의"}},dark:{S:{c:"#8B5CF6",bg:"#1E0A3C",tx:"#DDD6FE",bd:"#5B21B6",d:"최우량"},A:{c:"#10B981",bg:"#022C22",tx:"#A7F3D0",bd:"#065F46",d:"우량"},B:{c:"#F59E0B",bg:"#1C1400",tx:"#FDE68A",bd:"#92400E",d:"양호"},C:{c:"#F97316",bg:"#1C0A00",tx:"#FFEDD5",bd:"#9A3412",d:"보통"},D:{c:"#EF4444",bg:"#200606",tx:"#FECACA",bd:"#991B1B",d:"주의"}}};
-const CAT=[{key:"value",label:"가치 지표",max:20,color:"#2563EB"},{key:"growth",label:"성장성",max:20,color:"#059669"},{key:"financial",label:"재무건전성",max:20,color:"#7C3AED"},{key:"momentum",label:"기술적 모멘텀",max:20,color:"#D97706"}];
+// 자동완성용 종목 목록
+const STOCK_LIST = [
+  {name:"삼성전자",code:"005930"},{name:"SK하이닉스",code:"000660"},{name:"LG에너지솔루션",code:"373220"},
+  {name:"삼성바이오로직스",code:"207940"},{name:"현대차",code:"005380"},{name:"기아",code:"000270"},
+  {name:"포스코홀딩스",code:"005490"},{name:"삼성SDI",code:"006400"},{name:"LG화학",code:"051910"},
+  {name:"카카오",code:"035720"},{name:"네이버",code:"035420"},{name:"셀트리온",code:"068270"},
+  {name:"KB금융",code:"105560"},{name:"신한지주",code:"055550"},{name:"하나금융지주",code:"086790"},
+  {name:"삼성물산",code:"028260"},{name:"LG전자",code:"066570"},{name:"SK이노베이션",code:"096770"},
+  {name:"현대모비스",code:"012330"},{name:"SK텔레콤",code:"017670"},{name:"한국전력",code:"015760"},
+  {name:"크래프톤",code:"259960"},{name:"카카오뱅크",code:"323410"},{name:"하이브",code:"352820"},
+  {name:"엔씨소프트",code:"036570"},{name:"에코프로비엠",code:"247540"},{name:"에코프로",code:"086520"},
+  {name:"LG이노텍",code:"011070"},{name:"삼성전기",code:"009150"},{name:"엘앤에프",code:"066970"},
+  {name:"포스코퓨처엠",code:"003670"},{name:"두산에너빌리티",code:"034020"},{name:"고려아연",code:"010130"},
+  {name:"카카오페이",code:"377300"},{name:"넷마블",code:"251270"},{name:"카카오게임즈",code:"293490"},
+  {name:"한미약품",code:"128940"},{name:"셀트리온헬스케어",code:"091990"},{name:"펄어비스",code:"263750"},
+];,{key:"growth",label:"성장성",max:20,color:"#059669"},{key:"financial",label:"재무건전성",max:20,color:"#7C3AED"},{key:"momentum",label:"기술적 모멘텀",max:20,color:"#D97706"}];
 const IND=[{key:"value",label:"가치 지표",color:"#2563EB"},{key:"growth",label:"성장성 지표",color:"#059669"},{key:"financial",label:"재무건전성",color:"#7C3AED"},{key:"momentum",label:"기술적 모멘텀·이평선",color:"#D97706"}];
 
 function Ring({score,grade,dark}){const g=GC[dark?"dark":"light"][grade]||GC[dark?"dark":"light"].C;const r=72,c2=2*Math.PI*r,f=(score/100)*c2;return(<div style={{position:"relative",width:190,height:190,margin:"0 auto"}}><svg width="190" height="190" style={{transform:"rotate(-90deg)"}}><circle cx="95" cy="95" r={r} fill="none" stroke={dark?"#1A2535":"#E2E8F0"} strokeWidth="12"/><circle cx="95" cy="95" r={r} fill="none" stroke={g.c} strokeWidth="12" strokeDasharray={c2} strokeDashoffset={c2-f} strokeLinecap="round" style={{filter:`drop-shadow(0 0 8px ${g.c}60)`,transition:"stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)"}}/></svg><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:44,fontWeight:800,color:dark?"#F1F5F9":"#0F172A",fontFamily:"'IBM Plex Mono',monospace",lineHeight:1}}>{score}</span><span style={{fontSize:9,color:dark?"#4B5563":"#94A3B8",letterSpacing:2,marginTop:2}}>/100점</span><span style={{marginTop:7,background:g.bg,color:g.tx,border:`1px solid ${g.bd}`,padding:"3px 12px",borderRadius:20,fontSize:11,fontWeight:700}}>{grade}등급·{g.d}</span></div></div>);}
@@ -16,12 +31,28 @@ function PCard({level,title,description,T}){const m={high:{i:"⚠",c:T.neg,bg:T.
 export default function StockAnalyzer() {
   const [dark,      setDark]     = useState(false);
   const [query,     setQuery]    = useState("");
+  const [suggestions, setSuggestions] = useState([]);
   const [phase,     setPhase]    = useState("");
   const [stockData, setStockData]= useState(null);
   const [result,    setResult]   = useState(null);
   const [error,     setError]    = useState(null);
   const [tab,       setTab]      = useState("indicators");
   const [favorites, setFavorites]= useState([]);
+
+  const handleQueryChange = (val) => {
+    setQuery(val);
+    if (!val.trim()) { setSuggestions([]); return; }
+    const q = val.toLowerCase();
+    const matched = STOCK_LIST.filter(s =>
+      s.name.toLowerCase().includes(q) || s.code.includes(q)
+    ).slice(0, 6);
+    setSuggestions(matched);
+  };
+
+  const selectSuggestion = (s) => {
+    setQuery(s.name);
+    setSuggestions([]);
+  };
 
   useEffect(() => {
     try { setFavorites(JSON.parse(localStorage.getItem("stock_favorites")||"[]")); } catch {}
@@ -50,7 +81,7 @@ export default function StockAnalyzer() {
 
   const analyze = async () => {
     if (!query.trim() || phase) return;
-    setError(null); setResult(null); setStockData(null); setTab("indicators");
+    setError(null); setResult(null); setStockData(null); setTab("indicators"); setSuggestions([]);
 
     try {
       // ── 1단계: Yahoo Finance 데이터 (빠름, ~1초)
@@ -72,7 +103,7 @@ export default function StockAnalyzer() {
 
   const r=result, s=r?.scores||{}, info=stockData||{}, bd=s.breakdown||{}, ibd=s.industryBreakdown||{};
   const loading = !!phase;
-  const TABS=[{id:"indicators",label:"지표 상세"},{id:"industry",label:"업계 동향"},{id:"precautions",label:"유의사항"}];
+  const TABS=[{id:"indicators",label:"지표 상세"},{id:"industry",label:"업계 동향"}];
   const isKRW=info.currency==="KRW";
   const fmt=v=>{if(!v||isNaN(v))return"-";const n=parseFloat(v);return isKRW?`₩${Math.round(n).toLocaleString()}`:`$${parseFloat(n).toFixed(2)}`;};
   const fmtCap=v=>{if(!v)return"-";if(isKRW)return`${(v/1e12).toFixed(1)}조원`;if(v>=1e12)return`$${(v/1e12).toFixed(2)}T`;return`$${(v/1e9).toFixed(1)}B`;};
@@ -116,11 +147,29 @@ export default function StockAnalyzer() {
         <div style={{display:"flex",gap:8,marginBottom:24}}>
           <div style={{flex:1,position:"relative"}}>
             <input style={{width:"100%",padding:"13px 16px 13px 44px",background:T.inputBg,border:`1px solid ${T.inputBorder}`,borderRadius:9,color:T.text,fontSize:14,fontFamily:"'Sora',sans-serif",transition:"all .2s"}}
-              placeholder="종목명 또는 티커  (예: 삼성전자, NVDA, 005930, AAPL)"
-              value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&analyze()}/>
+              placeholder="종목명 또는 티커  (예: 삼성전자, NVDA, 005930)"
+              value={query}
+              onChange={e=>handleQueryChange(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"){setSuggestions([]);analyze();}if(e.key==="Escape")setSuggestions([]);}}
+              onBlur={()=>setTimeout(()=>setSuggestions([]),150)}
+            />
             <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:15,color:T.textFaint,pointerEvents:"none"}}>⌕</span>
+            {suggestions.length>0&&(
+              <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:T.card,border:`1px solid ${T.cardBorder}`,borderRadius:9,boxShadow:T.shadow,zIndex:100,overflow:"hidden"}}>
+                {suggestions.map(s=>(
+                  <div key={s.code}
+                    onMouseDown={()=>selectSuggestion(s)}
+                    style={{padding:"10px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${T.divider}`}}
+                    onMouseEnter={e=>e.currentTarget.style.background=T.accentBg}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <span style={{fontSize:13,fontWeight:600,color:T.text}}>{s.name}</span>
+                    <span style={{fontSize:11,color:T.textFaint,fontFamily:"'IBM Plex Mono',monospace"}}>{s.code}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <button onClick={analyze} disabled={loading} style={{padding:"13px 24px",background:loading?T.neuBg:T.accent,border:"none",borderRadius:9,color:loading?T.textFaint:"#fff",fontWeight:700,fontSize:13,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap",boxShadow:loading?"none":`0 2px 8px ${T.accent}40`}}>
+          <button onClick={()=>{setSuggestions([]);analyze();}} disabled={loading} style={{padding:"13px 24px",background:loading?T.neuBg:T.accent,border:"none",borderRadius:9,color:loading?T.textFaint:"#fff",fontWeight:700,fontSize:13,fontFamily:"'Sora',sans-serif",whiteSpace:"nowrap",boxShadow:loading?"none":`0 2px 8px ${T.accent}40`}}>
             {loading?"분석 중…":"분석 →"}
           </button>
         </div>
@@ -232,7 +281,7 @@ export default function StockAnalyzer() {
               {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"8px 18px",borderRadius:7,fontSize:12,border:`1px solid ${tab===t.id?T.accent:T.cardBorder}`,background:tab===t.id?T.accentBg:T.card,color:tab===t.id?T.accent:T.textSub,fontFamily:"'Sora',sans-serif",fontWeight:500,transition:"all .2s"}}>{t.label}</button>)}
             </div>
 
-            {tab==="indicators"&&<div className="fade-6" style={card()}>{IND.map(g=>(<div key={g.key} style={{marginBottom:24}}><div style={{display:"flex",alignItems:"center",gap:7,marginBottom:10}}><div style={{width:3,height:11,background:g.color,borderRadius:2}}/><span style={{fontSize:9,color:g.color,letterSpacing:2,fontWeight:700}}>{g.label.toUpperCase()}</span></div><div style={{display:"grid",gridTemplateColumns:"1.8fr 0.9fr 1.5fr 55px 65px",gap:7,padding:"6px 9px",background:T.tableHead,borderRadius:5,marginBottom:2}}>{["지표명","수치","벤치마크","점수","평가"].map(h=><span key={h} style={{fontSize:9,color:T.textFaint,fontWeight:600}}>{h}</span>)}</div>{r.indicators?.[g.key]?.map((ind,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1.8fr 0.9fr 1.5fr 55px 65px",gap:7,padding:"10px 9px",borderBottom:`1px solid ${T.divider}`,alignItems:"center"}}><div><div style={{fontSize:12,fontWeight:500}}>{ind.name}</div><div style={{fontSize:10,color:T.textFaint,marginTop:1}}>{ind.comment}</div></div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,fontWeight:700,color:ind.status==="good"?T.pos:ind.status==="bad"?T.neg:T.textSub}}>{ind.value}</div><div style={{fontSize:10,color:T.textFaint,lineHeight:1.4}}>{ind.benchmark}</div><Dots score={ind.score??0} max={5} T={T}/><Bdg status={ind.status} T={T}/></div>))}</div>))}</div>}
+            {tab==="indicators"&&<div className="fade-6" style={card()}>{IND.map(g=>(<div key={g.key} style={{marginBottom:24}}><div style={{display:"flex",alignItems:"center",gap:7,marginBottom:10}}><div style={{width:3,height:11,background:g.color,borderRadius:2}}/><span style={{fontSize:9,color:g.color,letterSpacing:2,fontWeight:700}}>{g.label.toUpperCase()}</span></div><div style={{display:"grid",gridTemplateColumns:"1.8fr 0.9fr 1.5fr 55px 65px",gap:7,padding:"6px 9px",background:T.tableHead,borderRadius:5,marginBottom:2}}>{["지표명","수치","벤치마크","점수","평가"].map(h=><span key={h} style={{fontSize:9,color:T.textFaint,fontWeight:600}}>{h}</span>)}</div>{r.indicators?.[g.key]?.filter(ind=>ind.value&&ind.value!=="N/A").map((ind,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1.8fr 0.9fr 1.5fr 55px 65px",gap:7,padding:"10px 9px",borderBottom:`1px solid ${T.divider}`,alignItems:"center"}}><div><div style={{fontSize:12,fontWeight:500}}>{ind.name}</div><div style={{fontSize:10,color:T.textFaint,marginTop:1}}>{ind.comment}</div></div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,fontWeight:700,color:ind.status==="good"?T.pos:ind.status==="bad"?T.neg:T.textSub}}>{ind.value}</div><div style={{fontSize:10,color:T.textFaint,lineHeight:1.4}}>{ind.benchmark}</div><Dots score={ind.score??0} max={5} T={T}/><Bdg status={ind.status} T={T}/></div>))}{!r.indicators?.[g.key]?.some(ind=>ind.value&&ind.value!=="N/A")&&<div style={{padding:"12px 9px",fontSize:12,color:T.textFaint}}>API 데이터 없음</div>}</div>))}</div>}
 
             {tab==="industry"&&<div className="fade-6" style={card()}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:12,marginBottom:16}}>{[{label:"업계 성장성/트렌드",score:ibd.trend,max:8,text:r.industryAnalysis?.trendSummary},{label:"경쟁 포지션/해자",score:ibd.competitive,max:6,text:r.industryAnalysis?.competitiveSummary}].map(item=>(<div key={item.label} style={{background:T.posBg,border:`1px solid ${T.posBdr}`,borderRadius:9,padding:14}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:9}}><span style={{fontSize:9,color:T.pos,letterSpacing:1.5,fontWeight:700}}>{item.label}</span><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,color:T.pos}}>{item.score}<span style={{fontSize:10,color:T.textFaint}}>/{item.max}</span></span></div><p style={{fontSize:12,color:T.textSub,lineHeight:1.65,margin:0}}>{item.text}</p></div>))}</div><div style={{marginBottom:16}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:9,color:T.textFaint,letterSpacing:2,fontWeight:700}}>최근 주요 이슈</span><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700,color:T.warn}}>{ibd.issues}<span style={{fontSize:10,color:T.textFaint}}>/6</span></span></div>{r.industryAnalysis?.issues?.map((issue,i)=><ICard key={i} {...issue} T={T}/>)}</div><div style={{background:T.tableHead,border:`1px solid ${T.divider}`,borderRadius:9,padding:14}}><div style={{fontSize:9,color:T.textFaint,letterSpacing:2,marginBottom:8,fontWeight:700}}>향후 전망 (3~6개월)</div><p style={{fontSize:12,color:T.textSub,lineHeight:1.7,margin:0}}>{r.outlook}</p></div></div>}
 
