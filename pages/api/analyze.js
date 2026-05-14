@@ -58,7 +58,7 @@ const ANALYSIS_PROMPT = `기관급 주식 분석 AI. 제공된 데이터로 100�
 등급: S>=90 A>=80 B>=70 C>=60 D<60. null지표: score=2 status="neutral" value="N/A"
 
 JSON만 반환:
-{"stockInfo":{"name":"","ticker":"","market":"","sector":"","currentPrice":"","currency":"","marketCap":""},"scores":{"total":0,"objective":0,"industry":0,"breakdown":{"value":0,"growth":0,"financial":0,"momentum":0},"industryBreakdown":{"trend":0,"competitive":0,"issues":0},"grade":"B","rationale":""},"indicators":{"value":[{"name":"PER","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"PBR","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"PSR","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"EV/EBITDA","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"growth":[{"name":"매출 성장률(YoY)","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"영업이익률","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"EPS 성장률","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"ROE","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"financial":[{"name":"부채비율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"유동비율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"이자보상배율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"FCF","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"momentum":[{"name":"RSI(14일)","value":"","benchmark":"40~65","score":0,"status":"good","comment":""},{"name":"52주 위치","value":"","benchmark":"30~70%","score":0,"status":"good","comment":""},{"name":"이평선 정배열","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"골든/데드크로스","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"20일선 위치","value":"","benchmark":"0~5%","score":0,"status":"good","comment":""}]},"industryAnalysis":{"trendScore":0,"competitiveScore":0,"issueScore":0,"trendSummary":"","competitiveSummary":"","issues":[{"type":"positive","title":"","description":""}]},"priceTargets":{"buyZoneLow":"0","buyZoneHigh":"0","targetPrice":"0","stopLoss":"0","upside":"0","basis":""},"precautions":[{"level":"medium","title":"","description":""}],"outlook":""}`;
+{"stockInfo":{"name":"","ticker":"","market":"","sector":"","currentPrice":"","currency":"","marketCap":""},"scores":{"total":0,"objective":0,"industry":0,"breakdown":{"value":0,"growth":0,"financial":0,"momentum":0},"industryBreakdown":{"trend":0,"competitive":0,"issues":0},"grade":"B","rationale":""},"indicators":{"value":[{"name":"PER","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"PBR","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"PSR","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"EV/EBITDA","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"growth":[{"name":"매출 성장률(YoY)","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"영업이익률","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"EPS 성장률","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"ROE","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"financial":[{"name":"부채비율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"유동비율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"이자보상배율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"FCF","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"momentum":[{"name":"RSI(14일)","value":"","benchmark":"40~65","score":0,"status":"good","comment":""},{"name":"52주 위치","value":"","benchmark":"30~70%","score":0,"status":"good","comment":""},{"name":"이평선 정배열","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"골든/데드크로스","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"20일선 위치","value":"","benchmark":"0~5%","score":0,"status":"good","comment":""}]},"industryAnalysis":{"trendScore":0,"competitiveScore":0,"issueScore":0,"trendSummary":"","competitiveSummary":"","issues":[{"type":"positive","title":"","description":""}]},"priceTargets":{"buyZoneLow":"0","buyZoneHigh":"0","targetPrice":"0","stopLoss":"0","upside":"0","basis":""},"outlook":""}`;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
@@ -68,6 +68,17 @@ export default async function handler(req, res) {
   const s = stockData;
   const isKRW = s.currency === "KRW";
   const fmtP = v => v ? (isKRW ? `₩${Math.round(v).toLocaleString()}` : `$${parseFloat(v).toFixed(2)}`) : "N/A";
+
+  // 기술지표 직접 계산
+  const maAlignment = s.priceAvg20 && s.priceAvg50 && s.priceAvg200
+    ? (s.priceAvg20 > s.priceAvg50 && s.priceAvg50 > s.priceAvg200 ? "정배열(강세)" : "역배열(약세)")
+    : null;
+  const ma20Diff = s.priceAvg20 && s.currentPrice
+    ? (((s.currentPrice - s.priceAvg20) / s.priceAvg20) * 100).toFixed(1)
+    : null;
+  const goldenCross = s.priceAvg50 && s.priceAvg200
+    ? (s.priceAvg50 > s.priceAvg200 ? "골든크로스(강세)" : "데드크로스(약세)")
+    : null;
 
   try {
     // 1단계: 웹서치로 재무데이터 수집
@@ -100,8 +111,9 @@ export default async function handler(req, res) {
 종목: ${s.name} (${s.ticker}) / ${s.exchange} / ${s.sector}
 현재가: ${s.currentPriceFmt} ${s.currency} | 시총: ${s.marketCapFmt}
 52주 고: ${fmtP(s.yearHigh)} | 저: ${fmtP(s.yearLow)} | 현재위치: ${s.position52w}%
-50일선: ${fmtP(s.priceAvg50)} | 200일선: ${fmtP(s.priceAvg200)}
-배열: ${s.bullAlignment===null?"N/A":s.bullAlignment?"50일>200일(강세)":"50일<200일(약세)"}
+50일선: ${fmtP(s.priceAvg50)} | 200일선: ${fmtP(s.priceAvg200)} | 20일선: ${fmtP(s.priceAvg20)}
+배열: ${s.bullAlignment===null?"N/A":s.bullAlignment?"50일>200일(강세)":"50일<200일(약세)"} | 이평선정배열: ${maAlignment??"N/A"} | 골든/데드크로스: ${goldenCross??"N/A"}
+RSI(14): ${s.rsi??"N/A"} | 20일선대비: ${ma20Diff!=null?ma20Diff+"%":"N/A"} | 52주위치: ${s.position52w??"N/A"}%
 
 [재무지표]
 PER: ${merged.per??'N/A'} | PBR: ${merged.pbr??'N/A'} | PSR: ${merged.psr??'N/A'} | EV/EBITDA: ${merged.evEbitda??'N/A'}
