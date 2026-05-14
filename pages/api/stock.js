@@ -64,7 +64,7 @@ async function fetchKISQuote(code, token) {
   return d.output || null;
 }
 
-/* ── KIS 일봉 → MA50·MA200 계산 ── */
+/* ── KIS 일봉 → MA50·MA200·MA20·RSI 계산 ── */
 async function fetchKISMAs(code, token, mktCode="J") {
   const now = new Date();
   const end = now.toISOString().slice(0,10).replace(/-/g,"");
@@ -84,7 +84,19 @@ async function fetchKISMAs(code, token, mktCode="J") {
   const rows = d.output2 || [];
   const closes = rows.map(row => parseFloat(row.stck_clpr)).filter(v => !isNaN(v) && v > 0);
   const avg = (arr, n) => arr.length >= n ? arr.slice(0,n).reduce((a,b)=>a+b,0)/n : null;
-  return { ma50: avg(closes,50), ma200: avg(closes,200), closes };
+
+  // RSI(14) 계산
+  let rsi = null;
+  if (closes.length >= 15) {
+    const changes = closes.slice(0,15).map((v,i) => i===0 ? 0 : v - closes[i-1]);
+    const gains = changes.filter(c=>c>0);
+    const losses = changes.filter(c=>c<0).map(c=>Math.abs(c));
+    const avgGain = gains.reduce((a,b)=>a+b,0)/14;
+    const avgLoss = losses.reduce((a,b)=>a+b,0)/14;
+    rsi = avgLoss===0 ? 100 : parseFloat((100 - 100/(1+avgGain/avgLoss)).toFixed(1));
+  }
+
+  return { ma20: avg(closes,20), ma50: avg(closes,50), ma200: avg(closes,200), closes, rsi };
 }
 
 /* ── KIS 재무비율 (ROE, 영업이익률 등) ── */
@@ -203,6 +215,8 @@ async function fetchKRStockData(code) {
   // 이동평균도 보정
   const ma50  = mas.ma50  ? mas.ma50  * unitFactor : null;
   const ma200 = mas.ma200 ? mas.ma200 * unitFactor : null;
+  const ma20  = mas.ma20  ? mas.ma20  * unitFactor : null;
+  const rsi   = mas.rsi;
 
   const pos52w = hi52&&lo52&&cur ? (((cur-lo52)/(hi52-lo52))*100).toFixed(1) : null;
   const mktCap = parseInt(quote.hts_avls) * 1e8;
@@ -225,9 +239,10 @@ async function fetchKRStockData(code) {
     marketCapFmt:    fmtCap(mktCap),
     yearHigh: hi52, yearLow: lo52,
     yearHighFmt: fmtKRW(hi52), yearLowFmt: fmtKRW(lo52),
-    priceAvg50: ma50, priceAvg200: ma200,
+    priceAvg50: ma50, priceAvg200: ma200, priceAvg20: ma20,
     position52w: pos52w,
     bullAlignment: ma50&&ma200 ? ma50>ma200 : null,
+    rsi: rsi,
     per:           safeFloat(quote.per),
     pbr:           safeFloat(quote.pbr),
     eps:           safeInt(quote.eps),
