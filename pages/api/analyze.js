@@ -39,8 +39,8 @@ async function fetchWebData(name, ticker, apiKey) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5-20250929",
-        max_tokens: 1000,
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 600,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{ role: "user", content: searchPrompt }],
       }),
@@ -52,19 +52,13 @@ async function fetchWebData(name, ticker, apiKey) {
   } catch { return {}; }
 }
 
-const ANALYSIS_PROMPT = `당신은 기관급 주식 분석 AI입니다. 제공된 데이터로 100점 만점 점수를 산출하세요.
+const ANALYSIS_PROMPT = `기관급 주식 분석 AI. 제공된 데이터로 100점 점수 산출.
 
-점수 구조 (100점):
-[가치 20점] PER(5) PBR(5) PSR(5) EV/EBITDA(5)
-[성장 20점] 매출성장(5) 영업이익률(5) EPS성장(5) ROE(5)
-[재무 20점] 부채비율(5) 유동비율(5) 이자보상배율(5) FCF(5)
-[모멘텀 20점] RSI(4) 52주위치(4) 이평선정배열(4) 골든/데드크로스(4) 20일선위치(4)
-[업계 20점] 트렌드(8) 경쟁포지션(6) 이슈(6)
-등급: S>=90 A>=80 B>=70 C>=60 D<60
-null/없는 지표: score=2 status="neutral" value="N/A"
+점수(100점): 가치20(PER5·PBR5·PSR5·EV5) 성장20(매출5·영업5·EPS5·ROE5) 재무20(부채5·유동5·이자5·FCF5) 모멘텀20(RSI4·52주4·정배열4·크로스4·20일4) 업계20(트렌드8·경쟁6·이슈6)
+등급: S>=90 A>=80 B>=70 C>=60 D<60. null지표: score=2 status="neutral" value="N/A"
 
 JSON만 반환:
-{"stockInfo":{"name":"","ticker":"","market":"","sector":"","currentPrice":"","currency":"","marketCap":""},"scores":{"total":0,"objective":0,"industry":0,"breakdown":{"value":0,"growth":0,"financial":0,"momentum":0},"industryBreakdown":{"trend":0,"competitive":0,"issues":0},"grade":"B","rationale":"3~5문장"},"indicators":{"value":[{"name":"PER","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"PBR","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"PSR","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"EV/EBITDA","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"growth":[{"name":"매출 성장률(YoY)","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"영업이익률","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"EPS 성장률","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"ROE","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"financial":[{"name":"부채비율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"유동비율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"이자보상배율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"FCF","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"momentum":[{"name":"RSI(14일)","value":"","benchmark":"40~65","score":0,"status":"good","comment":""},{"name":"52주 위치","value":"","benchmark":"30~70%","score":0,"status":"good","comment":""},{"name":"이평선 정배열","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"골든/데드크로스","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"20일선 위치","value":"","benchmark":"0~5%","score":0,"status":"good","comment":""}]},"industryAnalysis":{"trendScore":0,"competitiveScore":0,"issueScore":0,"trendSummary":"","competitiveSummary":"","issues":[{"type":"positive","title":"","description":""}]},"priceTargets":{"buyZoneLow":"0","buyZoneHigh":"0","targetPrice":"0","stopLoss":"0","upside":"0","basis":""},"precautions":[{"level":"medium","title":"","description":""}],"outlook":""}`;
+{"stockInfo":{"name":"","ticker":"","market":"","sector":"","currentPrice":"","currency":"","marketCap":""},"scores":{"total":0,"objective":0,"industry":0,"breakdown":{"value":0,"growth":0,"financial":0,"momentum":0},"industryBreakdown":{"trend":0,"competitive":0,"issues":0},"grade":"B","rationale":""},"indicators":{"value":[{"name":"PER","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"PBR","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"PSR","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"EV/EBITDA","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"growth":[{"name":"매출 성장률(YoY)","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"영업이익률","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"EPS 성장률","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"ROE","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"financial":[{"name":"부채비율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"유동비율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"이자보상배율","value":"","benchmark":"","score":0,"status":"neutral","comment":""},{"name":"FCF","value":"","benchmark":"","score":0,"status":"neutral","comment":""}],"momentum":[{"name":"RSI(14일)","value":"","benchmark":"40~65","score":0,"status":"good","comment":""},{"name":"52주 위치","value":"","benchmark":"30~70%","score":0,"status":"good","comment":""},{"name":"이평선 정배열","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"골든/데드크로스","value":"","benchmark":"","score":0,"status":"good","comment":""},{"name":"20일선 위치","value":"","benchmark":"0~5%","score":0,"status":"good","comment":""}]},"industryAnalysis":{"trendScore":0,"competitiveScore":0,"issueScore":0,"trendSummary":"","competitiveSummary":"","issues":[{"type":"positive","title":"","description":""}]},"priceTargets":{"buyZoneLow":"0","buyZoneHigh":"0","targetPrice":"0","stopLoss":"0","upside":"0","basis":""},"precautions":[{"level":"medium","title":"","description":""}],"outlook":""}`;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
